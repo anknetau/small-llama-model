@@ -40,8 +40,8 @@ class BPE:
     _baseCache: dict[int, Base] = field(default_factory=dict)
     _ruleCache: dict[int, Rule] = field(default_factory=dict)
     _specialCache: dict[int, Special] = field(default_factory=dict)
-    def read(self):
-        numbers = read_lines()
+    def read(self, filename):
+        numbers = self._read_lines(filename)
         base_count = numbers[0][0]
         rules_count = numbers[0][1]
         self.bases = self._process_bases(numbers[1:base_count+1])
@@ -50,6 +50,46 @@ class BPE:
         self._process_specials(last_line)
         assert(len(numbers) == base_count+rules_count+2)
         self._index()
+        self.table = self._build_simple_table()
+
+    def _build_simple_table(self):
+        table = []
+        for i in range(16384):
+            r = self.find(i)
+            if r is None:
+                print("ERROR: ID not found " + str(i))
+                return
+            # print(f"ID #{i} is \"" + bpe.decode(i) + "\"")
+            table.append(IdAndString(i, self.decode(i)))
+        return table
+
+    def _tokens_that_prefix(self, str):
+        return [entry for entry in self.table if str.startswith(entry.string)]
+
+    # TODO: this approach is very simple and slow - better to use a trie or similar.
+    def _find_matches(self, str):
+        result = []
+        while len(str) > 0:
+            m = self._tokens_that_prefix(str)
+            m.sort(key=lambda x: x.string, reverse=True)
+            if len(m) == 0:
+                print("ERROR: no match for \"" + str + "\"")
+                return
+            else:
+                result.append(m[0])
+            str = str[len(m[0].string):]
+        return result
+
+    def encode(self, str, max):
+        matches = self.simple_encode(str)
+        assert(len(matches) <= max)
+        if len(matches) < max:
+            matches.extend([self.padding.id] * (max - len(matches)))
+        return matches
+
+    def simple_encode(self, str):
+        matches = self._find_matches(str)
+        return [m.id for m in matches]
 
     def _index(self):
         for b in self.bases:
@@ -108,78 +148,11 @@ class BPE:
             return result.desc
         assert False, "result was " + str(result)
 
-def read_lines():
-    all_numbers = []
-    with open('flcc.bpe', 'r') as file:
-        for line in file:
-            number_strings = line.strip().split()
-            numbers = [int(num) for num in number_strings]
-            all_numbers.append(numbers)
-    return all_numbers
-
-
-
-
-def start():
-    bpe = BPE()
-    bpe.read()
-
-    simple_table = []
-    for i in range(16384):
-        r = bpe.find(i)
-        if r is None:
-            print("ERROR: ID not found " + str(i))
-            return
-        # print(f"ID #{i} is \"" + bpe.decode(i) + "\"")
-        simple_table.append(IdAndString(i, bpe.decode(i)))
-
-    def matches(str):
-        return [entry for entry in simple_table if str.startswith(entry.string)]
-    
-
-    def find_matches(str):
-        result = []
-        while (len(str) > 0):
-            m = matches(str)
-            m.sort(key=lambda x: x.string, reverse=True)
-            if len(m) == 0:
-                print("ERROR: no match for \"" + str + "\"")
-                return
-            else:
-                result.append(m[0])
-            str = str[len(m[0].string):]
-        return result
-
-    str = "if (token.Type != TokenType.Number && token.Type != TokenType.String)"
-    str = "VariantParser.ErrorAndMsg? err = null;"
-    matches = find_matches(str)
-    print(matches)
-    
-    
-    ids = [m.id for m in matches]
-
-    while len(ids) < 1024:
-        ids.append(bpe.padding.id)
-    print(ids)
-
-    
-
-    # for i in range(len(str)):
-    #     print(f"ID #{i} is \"" + str[i] + "\"")
-
-
-    return 
-    for r in bpe.rules:
-        rr = bpe.find(r.a)
-        if rr is None:
-            print(f"not found: {r.a}")
-            return
-
-        rr = bpe.find(r.b)
-        if rr is None:
-            print(f"not found: {r.b}")
-            return
-
-        print(f"ID #{r.c} is \"" + bpe.decode(r.c) + "\"")
-
-start()
+    def _read_lines(self, filename):
+        all_numbers = []
+        with open(filename, 'r') as file:
+            for line in file:
+                number_strings = line.strip().split()
+                numbers = [int(num) for num in number_strings]
+                all_numbers.append(numbers)
+        return all_numbers

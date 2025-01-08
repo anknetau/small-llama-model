@@ -3,12 +3,7 @@
 from dataclasses import dataclass
 import gguf
 import numpy as np
-
-# TODO: constants should come from elsewhere
-EPS=1e-6
-LEN=1024 # llama.embedding_length
-BLOCK_COUNT=6 # llama.block_count
-N_HEADS=8 # llama.attention.head_count
+import math
 
 @dataclass
 class Tensor:
@@ -49,6 +44,11 @@ class Model:
     output: Tensor
     output_norm: Tensor
     blocks: list[Block]
+    # TODO: constants should come from elsewhere
+    EPS=1e-6
+    LEN=1024 # llama.embedding_length
+    BLOCK_COUNT=6 # llama.block_count
+    N_HEADS=8 # llama.attention.head_count
     @staticmethod
     def load(filename):
         tensors = read_tensors(filename)
@@ -74,6 +74,14 @@ def read_tensors(filename):
             tensors.append(tensor)
             print("Loaded", tensor)
     return tensors
+def do_it(self, input):
+    logits = forward_pass(self, input, self.BLOCK_COUNT, self.EPS)
+    print(logits)
+    logits_last = logits[-1]
+    probs = softmax(logits_last, temperature=0.8)  # shape = [vocab_size]
+    next_token = np.random.choice(len(probs), p=probs)
+    print(next_token)
+    return next_token
 
 
 
@@ -107,7 +115,7 @@ def read_tensors(filename):
 #     logits = x @ output.weight.T  # shape [seq_len, vocab_size]
 #     return logits
 
-def rms_norm(hidden, weight, eps=EPS):
+def rms_norm(hidden, weight, eps):
     # hidden: [seq_len, hidden_size]
     # weight: [hidden_size]
     norm_x = hidden / np.sqrt((hidden**2).mean(axis=-1, keepdims=True) + eps)
@@ -115,90 +123,95 @@ def rms_norm(hidden, weight, eps=EPS):
 
 import numpy as np
 
-def apply_rope(Q, K, n_heads, base=10000.0):
+import numpy as np
+
+def apply_rope_llama(Q, K, n_heads, base=10000.0):
     """
-    Q, K: [seq_len, hidden_size]  (flattened = n_heads * head_dim)
-    n_heads: number of attention heads
-    base: RoPE base, often 10000.0 in Llama
+    Applies Llama v1 Rotary Position Embeddings to Q and K.
     
-    Returns Q_rot, K_rot (same shapes as Q/K).
+    Q, K:  [seq_len, hidden_size]   (flattened = n_heads * head_dim)
+    n_heads: int                    number of attention heads
+    base: float                     base frequency, typically 10000.0 for Llama
+
+    Returns:
+      Q_rot, K_rot (same shape as Q, K)
     """
     seq_len, hidden_size = Q.shape
     head_dim = hidden_size // n_heads
+    half_dim = head_dim // 2
 
     # Reshape Q, K to [seq_len, n_heads, head_dim]
     Q = Q.reshape(seq_len, n_heads, head_dim)
     K = K.reshape(seq_len, n_heads, head_dim)
 
-    # Build position indices: [0..seq_len-1]
-    positions = np.arange(seq_len)[:, None]  # shape (seq_len, 1)
+    # Positions: [0..seq_len-1]
+    positions = np.arange(seq_len)[:, None]  # (seq_len, 1)
 
-    # For each dimension i in [0..head_dim-1], 
-    # Llama uses a frequency that often looks like base^(2*i/dim). We'll do a simplified version:
-    half_dim = head_dim // 2
-    freq_seq = 1.0 / (base ** (2 * (np.arange(half_dim) / float(head_dim))))
+    # Frequencies for each dimension in [0..half_dim-1]
+    #   freq[i] = 1.0 / (base ** (2*i / head_dim))
+    dim_i = np.arange(half_dim)  # [0..(half_dim-1)]
+    freq = 1.0 / (base ** (2.0 * dim_i / head_dim))  # shape: [half_dim]
 
-    # angles: shape (seq_len, half_dim)
-    angles = positions * freq_seq[None, :]
+    # angles => (seq_len, half_dim)
+    angles = positions * freq[None, :]
 
-    # Compute cos/sin, shape => (seq_len, half_dim)
-    cos_ = np.cos(angles)
-    sin_ = np.sin(angles)
+    cos_ = np.cos(angles)  # shape (seq_len, half_dim)
+    sin_ = np.sin(angles)  # shape (seq_len, half_dim)
 
-    # Rotate Q, K on their even/odd channels
-    Q_rot = rope_rotate(Q, cos_, sin_)
-    K_rot = rope_rotate(K, cos_, sin_)
+    # Now rotate Q, K:
+    Q_rot = rope_rotate_llama(Q, cos_, sin_)
+    K_rot = rope_rotate_llama(K, cos_, sin_)
 
     # Reshape back to [seq_len, hidden_size]
-    Q_rot = Q_rot.reshape(seq_len, n_heads*head_dim)
-    K_rot = K_rot.reshape(seq_len, n_heads*head_dim)
+    Q_rot = Q_rot.reshape(seq_len, n_heads * head_dim)
+    K_rot = K_rot.reshape(seq_len, n_heads * head_dim)
     return Q_rot, K_rot
 
 
-def rope_rotate(x, cos_, sin_):
+def rope_rotate_llama(x, cos_, sin_):
     """
-    x: [seq_len, n_heads, head_dim]
-    cos_, sin_: [seq_len, half_dim] each, broadcastable
+    x:     [seq_len, n_heads, head_dim]
+    cos_, sin_: [seq_len, half_dim] each
 
-    Applies the interleaved RoPE rotation to even/odd channels of x.
+    Splits x into even/odd channels for each head, rotates them by cos_/sin_ 
+    following Llama's approach to RoPE.
     """
     seq_len, n_heads, head_dim = x.shape
     half_dim = head_dim // 2
 
-    # Reshape to [seq_len, n_heads, half_dim, 2]
-    # so x[..., 0] and x[..., 1] map to even/odd channels
+    # Reshape to separate the [even, odd] pairs:
+    # x => [seq_len, n_heads, half_dim, 2]
     x_reshaped = x.reshape(seq_len, n_heads, half_dim, 2)
-
-    # Reshape cos_/sin_ to broadcast: (seq_len, 1, half_dim, 1)
-    cos_ = cos_.reshape(seq_len, 1, half_dim, 1)
-    sin_ = sin_.reshape(seq_len, 1, half_dim, 1)
-
-    # x_even = x[..., 0], x_odd = x[..., 1]
-    x_even = x_reshaped[..., 0]
+    x_even = x_reshaped[..., 0]  # shape: (seq_len, n_heads, half_dim)
     x_odd  = x_reshaped[..., 1]
 
-    # RoPE formulas for each position p:
-    # x_even_rot[p] = x_even[p]*cos(p) - x_odd[p]*sin(p)
-    # x_odd_rot[p]  = x_odd[p]*cos(p)  + x_even[p]*sin(p)
+    # Broadcast cos_ and sin_ to match x_even shape:
+    # cos_, sin_ => (seq_len, 1, half_dim)
+    cos_ = cos_[:, None, :]
+    sin_ = sin_[:, None, :]
+
+    # Rotate:
     x_even_rot = x_even * cos_ - x_odd * sin_
     x_odd_rot  = x_odd  * cos_ + x_even * sin_
 
-    # Combine back
+    # Reassemble:
     out = np.stack([x_even_rot, x_odd_rot], axis=-1)
     out = out.reshape(seq_len, n_heads, head_dim)
     return out
 
-import numpy as np
-import math
+def self_attn_llama(Q, K, V, n_heads, is_causal=True):
+    """
+    Performs Llama-style multi-head self-attention for a single sequence
+    (no batch dimension in this example).
 
-def self_attn(Q, K, V, n_heads, is_causal=True):
-    """
     Q, K, V: [seq_len, hidden_size]
-    n_heads: number of heads
-    is_causal: whether to apply a causal (triangular) mask
-    
-    Returns: context => [seq_len, hidden_size]
+    n_heads: int
+    is_causal: bool, True => apply triangular mask (causal).
+
+    Returns:
+      context -> [seq_len, hidden_size]
     """
+
     seq_len, hidden_size = Q.shape
     head_dim = hidden_size // n_heads
 
@@ -207,81 +220,73 @@ def self_attn(Q, K, V, n_heads, is_causal=True):
     K = K.reshape(seq_len, n_heads, head_dim)
     V = V.reshape(seq_len, n_heads, head_dim)
 
-    # Compute attention scores => [n_heads, seq_len, seq_len]
-    # shape: Q: [q, n, d], K: [k, n, d]
-    # einsum 'qnd,knd->nqk' => for each head n, dot Q(q) with K(k)
+    # Compute attention scores => shape [n_heads, seq_len, seq_len]
+    # We do an einsum for clarity:
     scores = np.einsum('qnd,knd->nqk', Q, K) / math.sqrt(head_dim)
 
-    # Causal mask: block future positions
+    # Causal mask
     if is_causal:
-        # mask is upper triangular (positions > i are masked out)
-        mask = np.triu(np.ones((seq_len, seq_len), dtype=bool), k=1)
+        # mask out "future" positions: positions j > i
+        # so an upper-triangular part is masked
+        # shape (seq_len, seq_len), True where j>i
+        causal_mask = np.triu(np.ones((seq_len, seq_len), dtype=bool), k=1)
         # broadcast to [n_heads, seq_len, seq_len]
-        scores[:, mask] = -1e10  # a very large negative number
+        scores[:, causal_mask] = -1e10
 
-    # Softmax along the last axis (keys dimension)
-    # Subtract max for numerical stability
-    scores = scores - np.max(scores, axis=-1, keepdims=True)
-    attn_probs = np.exp(scores)
-    attn_probs /= np.sum(attn_probs, axis=-1, keepdims=True)  # shape [n_heads, seq_len, seq_len]
+    # Softmax along last axis (keys dimension, seq_len)
+    scores = scores - np.max(scores, axis=-1, keepdims=True)  # stability
+    exp_scores = np.exp(scores)
+    attn_probs = exp_scores / np.sum(exp_scores, axis=-1, keepdims=True)
+    # shape => [n_heads, seq_len, seq_len]
 
-    # Multiply by V => [n_heads, q, head_dim]
-    # 'nqk,knd->nqd'
+    # Multiply by V: [n_heads, seq_len, head_dim]
     context = np.einsum('nqk,knd->nqd', attn_probs, V)
 
-    # context => shape [n_heads, seq_len, head_dim]
-    # We want [seq_len, n_heads, head_dim], so transpose
-    context = context.transpose(1, 0, 2)  # => [seq_len, n_heads, head_dim]
+    # Re-transpose to [seq_len, n_heads, head_dim]
+    context = context.transpose(1, 0, 2)  # [seq_len, n_heads, head_dim]
 
-    # Finally reshape back to [seq_len, hidden_size]
+    # Finally reshape to [seq_len, hidden_size]
     context = context.reshape(seq_len, hidden_size)
     return context
 
 
-def forward_pass(model, tokens, num_layers):
+def forward_pass(model, tokens, num_layers, eps):
     # 1) Embeddings
     x = model.token_embd.weight[tokens, :]  # shape [seq_len, hidden_size]
 
     for i in range(num_layers):
         # -- Self-attn sub-block --
         blk = model.blocks[i]
-        attn_in = rms_norm(x, blk.attn_norm.weight)
+        attn_in = rms_norm(x, blk.attn_norm.weight, eps)
         Q = attn_in @ blk.attn_q.weight
         K = attn_in @ blk.attn_k.weight
         V = attn_in @ blk.attn_v.weight
 
-        Q, K = apply_rope(Q, K, i)  # shape [seq_len, hidden_size], do MHA reshape, etc.
-        context = self_attn(Q, K, V)  
-        attn_out = context @ blk.attn_output.weight
+        Q, K = apply_rope_llama(Q, K, model.N_HEADS)
+        attn_out = self_attn_llama(Q, K, V, model.N_HEADS)
+
         x = x + attn_out  # residual
 
         # -- FFN sub-block --
-        ffn_in = rms_norm(x, blk.ffn_norm.weight)
+        #ffn_in = rms_norm(x, blk.attn_norm.weight, eps)
+        ffn_in = x
         gate  = ffn_in @ blk.ffn_gate.weight.T
         up    = ffn_in @ blk.ffn_up.weight.T
+
+        def silu(x):
+            return x / (1.0 + np.exp(-x))
         # swiglu
-        activated = np.silu(gate) * up
+        activated = silu(gate) * up
         down = activated @ blk.ffn_down.weight.T
         x = x + down  # residual
 
     # final norm + output
-    x = rms_norm(x, model.output_norm.weight)
+    x = rms_norm(x, model.output_norm.weight, eps)
     logits = x @ model.output.weight.T  # shape [seq_len, vocab_size]
     return logits
 
-def start():
-    model = Model.load("flcc.model")
-
-    sample_input = [7338, 2128, 3049, 1136, 3380, 591, 5333, 1192]
-    while len(sample_input) < LEN:
-        sample_input.append(0)
-    print(sample_input)
-
-    forward_pass(model, sample_input, BLOCK_COUNT)
-
-
-    # output_norm.weight
-    # output.weight
-
-
-start()
+def softmax(z, temperature=1.0):
+    z = z / temperature
+    z = z - np.max(z)   # improve numerical stability
+    exp_z = np.exp(z)
+    return exp_z / np.sum(exp_z)
