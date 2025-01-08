@@ -60,7 +60,7 @@ class BPE:
                 print("ERROR: ID not found " + str(i))
                 return
             # print(f"ID #{i} is \"" + bpe.decode(i) + "\"")
-            table.append(IdAndString(i, self.decode(i)))
+            table.append(IdAndString(i, self.decode_token(i)))
         return table
 
     def _tokens_that_prefix(self, str):
@@ -82,6 +82,8 @@ class BPE:
 
     def encode(self, str, max):
         matches = self.simple_encode(str)
+        matches.insert(0, self.start.id)
+        matches.append(self.end.id)
         assert(len(matches) <= max)
         if len(matches) < max:
             matches.extend([self.padding.id] * (max - len(matches)))
@@ -137,16 +139,19 @@ class BPE:
             return result
         return self.find_rule(id)
 
-    def decode(self, id):
+    def decode_token(self, id):
         result = self.find(id)
         assert(result is not None)
         if isinstance(result, Base):
             return chr(result.char) + ""
         if isinstance(result, Rule):
-            return self.decode(result.a) + self.decode(result.b)
+            return self.decode_token(result.a) + self.decode_token(result.b)
         if isinstance(result, Special):
             return result.desc
         assert False, "result was " + str(result)
+
+    def decode(self, list):
+        return ''.join(self.decode_token(t) for t in list)
 
     def _read_lines(self, filename):
         all_numbers = []

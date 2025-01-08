@@ -11,15 +11,25 @@ def start():
     bpe.read('flcc.bpe')
 
     str = "if (token.Type != TokenType.Number && token.Type != TokenType.String)"
-    str = "VariantParser.ErrorAndMsg? err = null;"
-    tokens = bpe.encode(str, model.LEN)
+    str = "new Tuple<int, string> (3, "
 
-    # tokens = [7338, 2128, 3049, 1136, 3380, 591, 5333, 1192]
-    # while len(tokens) < model.LEN:
-    #     tokens.append(0)
+    str = """
+class Foo
+{
+    void Main()
+    {
+        bool x """
+
+    print(str);
+    tokens = bpe.encode(str, model.embedding_length)
+
     print(tokens)
 
-    # result = model.do_it(tokens)
+    result = model.run_pass(tokens)
+
+
+    print(bpe.decode_token(result))
+
     # print(result)
 
 

@@ -44,44 +44,49 @@ class Model:
     output: Tensor
     output_norm: Tensor
     blocks: list[Block]
+    info: dict
+    block_count: int
+    embedding_length: int
     # TODO: constants should come from elsewhere
-    EPS=1e-6
-    LEN=1024 # llama.embedding_length
-    BLOCK_COUNT=6 # llama.block_count
+    EPS=1e-6 # llama.attention.layer_norm_rms_epsilon
     N_HEADS=8 # llama.attention.head_count
     @staticmethod
     def load(filename):
-        tensors = read_tensors(filename)
-        dictionary = {tensor.name: tensor for tensor in tensors}
-        return Model(
-            token_embd = dictionary["token_embd.weight"],
-            output = dictionary["output.weight"],
-            output_norm = dictionary["output_norm.weight"],
-            blocks = [Block.make(dictionary, i) for i in range(BLOCK_COUNT)]
-        )
+        with open(filename, "rb") as f:
+            info, tensorinfo = gguf.load_gguf(f)
 
-def read_tensors(filename):
-    tensors = []
-    with open(filename, "rb") as f:
-        info, tensorinfo = gguf.load_gguf(f)
+            tensors = []
 
-        for key, value in info.items():
-            print(f"{key:30} {repr(value)[:100]}")
+            for name in tensorinfo:
+                weight = gguf.load_gguf_tensor(f, tensorinfo, name)
+                tensor = Tensor(name, weight)
+                tensors.append(tensor)
 
-        for name in tensorinfo:
-            weight = gguf.load_gguf_tensor(f, tensorinfo, name)
-            tensor = Tensor(name, weight)
-            tensors.append(tensor)
-            print("Loaded", tensor)
-    return tensors
-def do_it(self, input):
-    logits = forward_pass(self, input, self.BLOCK_COUNT, self.EPS)
-    print(logits)
-    logits_last = logits[-1]
-    probs = softmax(logits_last, temperature=0.8)  # shape = [vocab_size]
-    next_token = np.random.choice(len(probs), p=probs)
-    print(next_token)
-    return next_token
+            for key, value in info.items():
+                print(f"{key:30} {repr(value)[:100]}")
+
+            dictionary = {tensor.name: tensor for tensor in tensors}
+            BLOCK_COUNT = info["llama.block_count"]
+
+
+            return Model(
+                token_embd = dictionary["token_embd.weight"],
+                output = dictionary["output.weight"],
+                output_norm = dictionary["output_norm.weight"],
+                blocks = [Block.make(dictionary, i) for i in range(BLOCK_COUNT)],
+                info = info,
+                block_count = BLOCK_COUNT,
+                embedding_length = info["llama.embedding_length"]
+            )
+
+    def run_pass(self, input):
+        logits = forward_pass(self, input, self.block_count, self.EPS)
+        print(logits)
+        logits_last = logits[-1]
+        probs = softmax(logits_last, temperature=0.8)  # shape = [vocab_size]
+        next_token = np.random.choice(len(probs), p=probs)
+        print(next_token)
+        return next_token
 
 
 
