@@ -116,11 +116,12 @@ class Model:
         attn.weight = weights
 
     def fix(self):
+        print("TINKERING WITH ATTN K/Q")
         # not sure if needed.
         # see https://github.com/99991/pygguf/blob/main/test.py#L38C48-L38C49
-        # for block in self.blocks:
-        #     self._fix(block.attn_k)
-        #     self._fix(block.attn_q)
+        for block in self.blocks:
+            self._fix(block.attn_k)
+            self._fix(block.attn_q)
         return
 
     def run_pass(self, input):
@@ -137,8 +138,11 @@ class Model:
         return next_token
 
 def rms_norm(hidden, weight, eps):
-    # hidden: [seq_len, hidden_size]
-    # weight: [hidden_size]
+    norm_x = (hidden ** 2).mean(-1, keepdims=True) + eps
+    norm_x = hidden / np.sqrt(norm_x)
+    return norm_x * weight
+
+def rms_norm_old(hidden, weight, eps):
     norm_x = hidden / np.sqrt((hidden**2).mean(axis=-1, keepdims=True) + eps)
     return norm_x * weight  # elementwise multiply
 
@@ -267,7 +271,7 @@ def self_attn_llama(Q, K, V, n_heads, is_causal=True):
     return context
 
 
-def forward_pass(model, tokens, num_layers, eps):
+def forward_pass(model: Model, tokens, num_layers, eps):
     x = model.token_embd.weight[tokens, :]
 
     for i in range(num_layers):
@@ -293,8 +297,6 @@ def forward_pass(model, tokens, num_layers, eps):
         gate  = ffn_in @ blk.ffn_gate.weight.T
         up    = ffn_in @ blk.ffn_up.weight.T
 
-        def silu(x):
-            return x / (1.0 + np.exp(-x))
         # swiglu
         activated = silu(gate) * up
         down = activated @ blk.ffn_down.weight.T
@@ -304,6 +306,9 @@ def forward_pass(model, tokens, num_layers, eps):
     x = rms_norm(x, model.output_norm.weight, eps)
     logits = x @ model.output.weight.T
     return logits
+
+def silu(x):
+    return x / (1.0 + np.exp(-x))
 
 def softmax(z, temperature=1.0):
     z = z / temperature

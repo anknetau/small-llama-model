@@ -11,7 +11,7 @@ def start():
     assert(model.embedding_length == 1024)
     assert(model.block_count == 6)
     assert(model.eps < 1e-5)
-    model.fix()
+    # model.fix()
 
     print(model.detailed_description())
 

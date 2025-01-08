@@ -80,16 +80,18 @@ class BPE:
             str = str[len(m[0].string):]
         return result
 
-    def encode(self, str, max):
+    def encode(self, str, max, fill=True, end=False) -> list[int]:
         matches = self.simple_encode(str)
         matches.insert(0, self.start.id)
-        matches.append(self.end.id)
-        assert(len(matches) <= max)
-        if len(matches) < max:
-            matches.extend([self.padding.id] * (max - len(matches)))
+        if end:
+            matches.append(self.end.id)
+        if fill:
+            assert(len(matches) <= max)
+            if len(matches) < max:
+                matches.extend([self.padding.id] * (max - len(matches)))
         return matches
 
-    def simple_encode(self, str):
+    def simple_encode(self, str) -> list[int]:
         matches = self._find_matches(str)
         return [m.id for m in matches]
 
@@ -139,7 +141,7 @@ class BPE:
             return result
         return self.find_rule(id)
 
-    def decode_token(self, id):
+    def decode_token(self, id: int):
         result = self.find(id)
         assert(result is not None)
         if isinstance(result, Base):
