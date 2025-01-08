@@ -125,44 +125,16 @@ class Model:
 
     def run_pass(self, input):
         logits = forward_pass(self, input, self.block_count, self.eps)
-        print(logits)
         logits_last = logits[-1]
-        probs = softmax(logits_last, temperature=0.8)  # shape = [vocab_size]
-        next_token = np.random.choice(len(probs), p=probs)
+        temperature = 0
+        print(logits_last)
+        if temperature > 0:
+            probs = softmax(logits_last, temperature=temperature)
+            next_token = np.random.choice(len(probs), p=probs)
+        else:
+            next_token = np.argmax(logits_last)
         print(next_token)
         return next_token
-
-
-
-# def forward_pass(tokens):
-#     # 1) Embeddings
-#     x = token_embd.weight[tokens, :]  # shape [seq_len, hidden_size]
-
-#     for i in range(num_layers):
-#         # -- Self-attn sub-block --
-#         attn_in = rms_norm(x, blk[i].attn_norm.weight)
-#         Q = attn_in @ blk[i].attn_q.weight
-#         K = attn_in @ blk[i].attn_k.weight
-#         V = attn_in @ blk[i].attn_v.weight
-
-#         Q, K = apply_rope(Q, K, i)  # shape [seq_len, hidden_size], do MHA reshape, etc.
-#         context = self_attn(Q, K, V)  
-#         attn_out = context @ blk[i].attn_output.weight
-#         x = x + attn_out  # residual
-
-#         # -- FFN sub-block --
-#         ffn_in = rms_norm(x, blk[i].ffn_norm.weight)
-#         gate  = ffn_in @ blk[i].ffn_gate.weight.T
-#         up    = ffn_in @ blk[i].ffn_up.weight.T
-#         # swiglu
-#         activated = np.silu(gate) * up
-#         down = activated @ blk[i].ffn_down.weight.T
-#         x = x + down  # residual
-
-#     # final norm + output
-#     x = rms_norm(x, output_norm.weight)
-#     logits = x @ output.weight.T  # shape [seq_len, vocab_size]
-#     return logits
 
 def rms_norm(hidden, weight, eps):
     # hidden: [seq_len, hidden_size]
@@ -296,8 +268,7 @@ def self_attn_llama(Q, K, V, n_heads, is_causal=True):
 
 
 def forward_pass(model, tokens, num_layers, eps):
-    # 1) Embeddings
-    x = model.token_embd.weight[tokens, :]  # shape [seq_len, hidden_size]
+    x = model.token_embd.weight[tokens, :]
 
     for i in range(num_layers):
         # -- Self-attn sub-block --
@@ -307,6 +278,11 @@ def forward_pass(model, tokens, num_layers, eps):
         K = attn_in @ blk.attn_k.weight
         V = attn_in @ blk.attn_v.weight
 
+        # Somewhere else:
+        #         Q, K = apply_rope(Q, K, i)  # shape [seq_len, hidden_size], do MHA reshape, etc.
+        #         context = self_attn(Q, K, V)  
+        #         attn_out = context @ blk[i].attn_output.weight
+
         Q, K = apply_rope_llama(Q, K, model.n_heads)
         attn_out = self_attn_llama(Q, K, V, model.n_heads)
 
@@ -314,7 +290,6 @@ def forward_pass(model, tokens, num_layers, eps):
 
         # -- FFN sub-block --
         ffn_in = rms_norm(x, blk.ffn_norm.weight, eps)
-        # ffn_in = x
         gate  = ffn_in @ blk.ffn_gate.weight.T
         up    = ffn_in @ blk.ffn_up.weight.T
 
@@ -327,7 +302,7 @@ def forward_pass(model, tokens, num_layers, eps):
 
     # final norm + output
     x = rms_norm(x, model.output_norm.weight, eps)
-    logits = x @ model.output.weight.T  # shape [seq_len, vocab_size]
+    logits = x @ model.output.weight.T
     return logits
 
 def softmax(z, temperature=1.0):
