@@ -47,9 +47,8 @@ class Model:
     info: dict
     block_count: int
     embedding_length: int
-    # TODO: constants should come from elsewhere
-    EPS=1e-6 # llama.attention.layer_norm_rms_epsilon
-    N_HEADS=8 # llama.attention.head_count
+    n_heads: int
+    eps: float
     @staticmethod
     def load(filename):
         with open(filename, "rb") as f:
@@ -76,11 +75,33 @@ class Model:
                 blocks = [Block.make(dictionary, i) for i in range(BLOCK_COUNT)],
                 info = info,
                 block_count = BLOCK_COUNT,
-                embedding_length = info["llama.embedding_length"]
+                embedding_length = info["llama.embedding_length"],
+                n_heads = info["llama.attention.head_count"],
+                eps = info["llama.attention.layer_norm_rms_epsilon"]
             )
+        
+    def _fix(self, attn):
+        shape = attn.weight.shape
+        weights = attn.weight
+
+        # if ".attn_k." in name or ".attn_q." in name:
+            # num_heads = info["llama.attention.head_count"]
+        tmp_shape = (shape[-1] // self.n_heads // 2, self.n_heads, 2, shape[0])
+        weights = weights.reshape(tmp_shape)
+        weights = weights.transpose(0, 2, 1, 3)
+        weights = weights.reshape(shape[::-1])
+        attn.weight = weights
+
+    def fix(self):
+        # not sure if needed.
+        # see https://github.com/99991/pygguf/blob/main/test.py#L38C48-L38C49
+        # for block in self.blocks:
+        #     self._fix(block.attn_k)
+        #     self._fix(block.attn_q)
+        return
 
     def run_pass(self, input):
-        logits = forward_pass(self, input, self.block_count, self.EPS)
+        logits = forward_pass(self, input, self.block_count, self.eps)
         print(logits)
         logits_last = logits[-1]
         probs = softmax(logits_last, temperature=0.8)  # shape = [vocab_size]
@@ -125,10 +146,6 @@ def rms_norm(hidden, weight, eps):
     # weight: [hidden_size]
     norm_x = hidden / np.sqrt((hidden**2).mean(axis=-1, keepdims=True) + eps)
     return norm_x * weight  # elementwise multiply
-
-import numpy as np
-
-import numpy as np
 
 def apply_rope_llama(Q, K, n_heads, base=10000.0):
     """
@@ -267,8 +284,8 @@ def forward_pass(model, tokens, num_layers, eps):
         K = attn_in @ blk.attn_k.weight
         V = attn_in @ blk.attn_v.weight
 
-        Q, K = apply_rope_llama(Q, K, model.N_HEADS)
-        attn_out = self_attn_llama(Q, K, V, model.N_HEADS)
+        Q, K = apply_rope_llama(Q, K, model.n_heads)
+        attn_out = self_attn_llama(Q, K, V, model.n_heads)
 
         x = x + attn_out  # residual
 
