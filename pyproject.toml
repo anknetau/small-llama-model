@@ -1,0 +1,16 @@
+[project]
+name = "small-llama-model"
+version = "1.0.0"
+description = "Testing a small llama model that runs locally"
+authors = [{name = "Andres Kievsky"}]
+readme = "README.md"
+license = {file = "LICENSE"}
+dependencies = ["numpy"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GPL v3",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/anknetau/small-llama-model"
