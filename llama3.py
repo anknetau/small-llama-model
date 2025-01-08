@@ -99,79 +99,72 @@ def repeat_kv(x: Array, n_rep: int):
     return z
 
 
-class FeedForward:
-    def __init__(self, up_weight: Array, gate_weight: Array, down_weight: Array):
-        self.up_weight = up_weight.T
-        self.gate_weight = gate_weight.T
-        self.down_weight = down_weight.T
-
-    def calc(self, x: Array):
+def feed_forward(up_weight: Array, gate_weight: Array, down_weight: Array, in_x: Array):
         # FD = 2 * 4 * D / 3
-        swish: Array = silu(x @ self.gate_weight)
-        x_V: Array = x @ self.up_weight
+        swish: Array = silu(in_x @ gate_weight)
+        x_V: Array = in_x @ up_weight
         x: Array = swish * x_V
-        x: Array = x @ self.down_weight
-        return x
+        x1: Array = x @ down_weight
+        return x1
+    
+# class FeedForward:
+#     def __init__(self, up_weight: Array, gate_weight: Array, down_weight: Array):
+#         self.up_weight = up_weight.T
+#         self.gate_weight = gate_weight.T
+#         self.down_weight = down_weight.T
 
+#     def calc(self, x: Array):
+#         # FD = 2 * 4 * D / 3
+#         swish: Array = silu(x @ self.gate_weight)
+#         x_V: Array = x @ self.up_weight
+#         x: Array = swish * x_V
+#         x: Array = x @ self.down_weight
+#         return x
 
-class RMSNorm:
-    def __init__(self, weight: Array, eps: float):
-        self.weight = weight
-        self.eps = eps
-
-    def calc(self, x: Array):
-        z: Array = (x ** 2).mean(-1, keepdims=True) + self.eps
+def rms_norm(weight: Array, eps: float, x: Array):
+        z: Array = (x ** 2).mean(-1, keepdims=True) + eps
         z: Array = x / np.sqrt(z)
-        return z * self.weight
+        return z * weight
 
-
-class Attention:
-    def __init__(self, q_weight: Array, k_weight: Array, v_weight: Array,
-                 o_weight: Array, model: Model, bpe: BPE):
-        
-        self.model = model
-        self.bpe = bpe
-
-        self.n_kv_heads = model.n_heads # head_count_kv ? who knows!
+def calc_attention(block: Block, x: Array, start_pos: int, mask: Optional[Array], freqs_cos: Array, freqs_sin: Array):
+        n_kv_heads = model.n_heads # head_count_kv ? who knows!
         # assert args.n_heads % self.n_kv_heads == 0
-        self.n_local_heads = model.n_heads
-        self.n_local_kv_heads = self.n_kv_heads
-        self.n_rep = self.n_local_heads // self.n_local_kv_heads
-        self.head_dim = DIM // model.n_heads # llama.rope.dimension_count ? is 128
+        n_local_heads = model.n_heads
+        n_local_kv_heads = n_kv_heads
+        n_rep = n_local_heads // n_local_kv_heads
+        head_dim = DIM // model.n_heads # llama.rope.dimension_count ? is 128
 
-        self.q_weight = q_weight.T
-        self.k_weight = k_weight.T
-        self.v_weight = v_weight.T
-        self.o_weight = o_weight.T
+        q_weight: Array = block.attn_q.weight.T
+        k_weight: Array = block.attn_k.weight.T
+        v_weight: Array = block.attn_v.weight.T
+        o_weight: Array = block.attn_output.weight.T
 
-        self.cache_k = np.zeros((MAX_BATCH_SIZE, MAX_SEQ_LEN, self.n_local_kv_heads, self.head_dim))
-        self.cache_v = np.zeros((MAX_BATCH_SIZE, MAX_SEQ_LEN, self.n_local_kv_heads, self.head_dim))
+        cache_k = np.zeros((MAX_BATCH_SIZE, MAX_SEQ_LEN, n_local_kv_heads, head_dim))
+        cache_v = np.zeros((MAX_BATCH_SIZE, MAX_SEQ_LEN, n_local_kv_heads, head_dim))
 
-    def calc(self, x: Array, start_pos: int, mask: Optional[Array],
-                 freqs_cos: Array, freqs_sin: Array):
         B, L, _ = x.shape
 
         # QKV
-        xq: Array = x @ self.q_weight
-        xk: Array = x @ self.k_weight
-        xv: Array = x @ self.v_weight
+        xq: Array = x @ q_weight
+        xk: Array = x @ k_weight
+        xv: Array = x @ v_weight
 
-        xq: Array = xq.reshape(B, L, self.n_local_heads, self.head_dim)
-        xk: Array = xk.reshape(B, L, self.n_local_kv_heads, self.head_dim)
-        xv: Array = xv.reshape(B, L, self.n_local_kv_heads, self.head_dim)
+        xq: Array = xq.reshape(B, L, n_local_heads, head_dim)
+        xk: Array = xk.reshape(B, L, n_local_kv_heads, head_dim)
+        xv: Array = xv.reshape(B, L, n_local_kv_heads, head_dim)
 
         # RoPE #2
         xq, xk = apply_rotary_emb(xq, xk, freqs_cos, freqs_sin)
 
         # KV Cache
-        self.cache_k[:B, start_pos: start_pos + L] = xk
-        self.cache_v[:B, start_pos: start_pos + L] = xv
-        ks: Array = self.cache_k[:B, : start_pos + L]
-        vs: Array = self.cache_v[:B, : start_pos + L]
+        cache_k[:B, start_pos: start_pos + L] = xk
+        cache_v[:B, start_pos: start_pos + L] = xv
+        ks: Array = cache_k[:B, : start_pos + L]
+        vs: Array = cache_v[:B, : start_pos + L]
 
         # GQA
-        xk: Array = repeat_kv(ks, self.n_rep)
-        xv: Array = repeat_kv(vs, self.n_rep)
+        xk: Array = repeat_kv(ks, n_rep)
+        xv: Array = repeat_kv(vs, n_rep)
 
         # ["B, L, HN, HD"] -> ["B, HN, L, HD"]
         xq: Array = xq.transpose(0, 2, 1, 3)
@@ -180,7 +173,7 @@ class Attention:
 
         # Scaled Dot-Product Attention
         # ["B, HN, L or 1, HD"] @ ["B, HN, HD, L"] -> ["B, HN, L or 1, L"]
-        attention: Array = xq @ xk.transpose(0, 1, 3, 2) / math.sqrt(self.head_dim)
+        attention: Array = xq @ xk.transpose(0, 1, 3, 2) / math.sqrt(head_dim)
         # `mask` is used only once at the beginning.
         if mask is not None:
             attention = attention + mask[None, None, :, :]
@@ -189,48 +182,57 @@ class Attention:
 
         # ["B, HN, L or 1, HD"] -> ["B, L or 1, D"]
         output: Array = output.transpose(0, 2, 1, 3).reshape(B, L, -1)
-        output: Array = output @ self.o_weight
+        output: Array = output @ o_weight
 
         return output
 
 
 class TransformerBlock:
-    def __init__(block: Block, self, model: Model, bpe):
-        self.attention = Attention(
-            block.attn_q.weight, # weight.get(f"model.layers.{layer_id}.self_attn.q_proj.weight"),
-            block.attn_k.weight, # weight.get(f"model.layers.{layer_id}.self_attn.k_proj.weight"),
-            block.attn_v.weight, # weight.get(f"model.layers.{layer_id}.self_attn.v_proj.weight"),
-            block.attn_output.weight, # weight.get(f"model.layers.{layer_id}.self_attn.o_proj.weight"),
-            model,
-            bpe
-        )
-        
-        self.feed_forward = FeedForward(
-            block.ffn_up.weight, # weight.get(f"model.layers.{layer_id}.mlp.up_proj.weight"),
-            block.ffn_gate.weight, # weight.get(f"model.layers.{layer_id}.mlp.gate_proj.weight"),
-            block.ffn_down.weight # weight.get(f"model.layers.{layer_id}.mlp.down_proj.weight"),
-        )
-        self.input_layernorm = RMSNorm(
-            block.ffn_norm.weight, # weight.get(f"model.layers.{layer_id}.input_layernorm.weight"),
-            eps=model.eps
-        )
-        self.post_attention_layernorm = RMSNorm(
-            block.attn_norm.weight, # weight.get(f"model.layers.{layer_id}.post_attention_layernorm.weight"),
-            eps=model.eps
-        )
+    def __init__(self, block: Block, model: Model, bpe):      
+        self.block = block;  
+        # self.feed_forward = FeedForward(
+        #     block.ffn_up.weight, # weight.get(f"model.layers.{layer_id}.mlp.up_proj.weight"),
+        #     block.ffn_gate.weight, # weight.get(f"model.layers.{layer_id}.mlp.gate_proj.weight"),
+        #     block.ffn_down.weight # weight.get(f"model.layers.{layer_id}.mlp.down_proj.weight"),
+        # )
+        # self.input_layernorm = rms_norm(
+        #     block.ffn_norm.weight, # weight.get(f"model.layers.{layer_id}.input_layernorm.weight"),
+        #     eps=model.eps
+        # )
+        # self.post_attention_layernorm = rms_norm(
+        #     block.attn_norm.weight, # weight.get(f"model.layers.{layer_id}.post_attention_layernorm.weight"),
+        #     eps=model.eps
+        # )
 
     def calc(self, x: Array, start_pos: int, mask: Array,
-                 freqs_cos: Array, freqs_sin: Array):
+                 freqs_cos: Array, freqs_sin: Array, eps: float):
         # RMSNorm
-        norm_x: Array = self.input_layernorm.calc(x)
+        # norm_x: Array = self.input_layernorm.calc(x)
+        norm_x: Array = rms_norm(self.block.ffn_norm.weight, eps, x)
+        # self.input_layernorm = rms_norm(
+        #     block.ffn_norm.weight, # weight.get(f"model.layers.{layer_id}.input_layernorm.weight"),
+        #     eps=model.eps
+        # )
+
         # Masked Multi-Head Attention
-        h1: Array = self.attention.calc(norm_x, start_pos, mask, freqs_cos, freqs_sin)
+        h1: Array = calc_attention(self.block, norm_x, start_pos, mask, freqs_cos, freqs_sin)
         z = x + h1
 
         # RMSNorm
-        norm_z = self.post_attention_layernorm.calc(z)
+        # norm_z = self.post_attention_layernorm.calc(z)
+        norm_z = rms_norm(self.block.attn_norm.weight, eps, z)
+        # self.post_attention_layernorm = rms_norm(
+        #     block.attn_norm.weight, # weight.get(f"model.layers.{layer_id}.post_attention_layernorm.weight"),
+        #     eps=model.eps
+        # )
+
         # Feed Forward + SwiGLU
-        h2: Array = self.feed_forward.calc(norm_z)
+        # h2: Array = self.feed_forward.calc(norm_z)
+        h2: Array = feed_forward(self.block.ffn_up.weight.T, self.block.ffn_gate.weight.T, self.block.ffn_down.weight.T, norm_z)
+        #     block.ffn_up.weight, # weight.get(f"model.layers.{layer_id}.mlp.up_proj.weight"),
+        #     block.ffn_gate.weight, # weight.get(f"model.layers.{layer_id}.mlp.gate_proj.weight"),
+        #     block.ffn_down.weight # weight.get(f"model.layers.{layer_id}.mlp.down_proj.weight"),
+
         out = z + h2
 
         return out
@@ -250,7 +252,7 @@ class Llama:
         for id in range(model.block_count):
             self.layers.append(TransformerBlock(model.blocks[id], model, bpe))
 
-        self.norm = RMSNorm(model.output_norm.weight, eps=model.eps) # weight.get("model.norm.weight"), eps=model.eps)
+        # self.norm = RMSNorm(model.output_norm.weight, eps=model.eps) # weight.get("model.norm.weight"), eps=model.eps)
         self.lm_head_weight: Array = model.output.weight.T # weight.get("lm_head.weight").T
 
 
@@ -270,10 +272,11 @@ class Llama:
 
         # Transformer Layers
         for i, layer in enumerate(self.layers):
-            h: Array = layer.calc(h, start_pos, mask, freqs_cos, freqs_sin)
+            h: Array = layer.calc(h, start_pos, mask, freqs_cos, freqs_sin, model.eps)
 
         # RMSNorm
-        h: Array = self.norm.calc(h)
+        # h: Array = self.norm.calc(h)
+        h: Array = rms_norm(model.output_norm.weight, model.eps, h) # weight.get("model.norm.weight"), eps=model.eps)
         # Only forward the output from the last position.
         # ["B, 1, VS"] = ["B, 1(L), D"] @ ["D, VS"]
         logit: Array = h[:, [-1], :] @ self.lm_head_weight
