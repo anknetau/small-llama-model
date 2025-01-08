@@ -13,6 +13,7 @@ def start():
     assert(model.eps < 1e-5)
     model.fix()
 
+    print(model.detailed_description())
 
     bpe = BPE()
     bpe.read('models/flcc/flcc.bpe')
@@ -34,7 +35,7 @@ class Foo
     {
         bool x """
 
-    print(str);
+    print(str)
     tokens = bpe.encode(str, model.embedding_length)
 
     print(tokens)

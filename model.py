@@ -22,6 +22,11 @@ class Block:
     ffn_up: Tensor
     ffn_down: Tensor
     attn_norm: Tensor
+    ffn_norm: Tensor
+
+    def all_tensors(self):
+        return [self.attn_q, self.attn_k, self.attn_v, self.attn_output,
+                self.ffn_gate, self.ffn_up, self.ffn_down, self.attn_norm, self.ffn_norm]
 
     @staticmethod
     def make(dictionary, i):
@@ -36,6 +41,7 @@ class Block:
             ffn_up = dictionary[blk(i, "ffn_up")],
             ffn_down = dictionary[blk(i, "ffn_down")],
             attn_norm = dictionary[blk(i, "attn_norm")],
+            ffn_norm = dictionary[blk(i, "ffn_norm")],
         )
 
 @dataclass
@@ -49,6 +55,7 @@ class Model:
     embedding_length: int
     n_heads: int
     eps: float
+    
     @staticmethod
     def load(filename):
         with open(filename, "rb") as f:
@@ -61,25 +68,41 @@ class Model:
                 tensor = Tensor(name, weight)
                 tensors.append(tensor)
 
-            for key, value in info.items():
-                print(f"{key:30} {repr(value)[:100]}")
-
             dictionary = {tensor.name: tensor for tensor in tensors}
-            BLOCK_COUNT = info["llama.block_count"]
-
+            bc = info["llama.block_count"]
 
             return Model(
                 token_embd = dictionary["token_embd.weight"],
                 output = dictionary["output.weight"],
                 output_norm = dictionary["output_norm.weight"],
-                blocks = [Block.make(dictionary, i) for i in range(BLOCK_COUNT)],
+                blocks = [Block.make(dictionary, i) for i in range(bc)],
                 info = info,
-                block_count = BLOCK_COUNT,
+                block_count = bc,
                 embedding_length = info["llama.embedding_length"],
                 n_heads = info["llama.attention.head_count"],
                 eps = info["llama.attention.layer_norm_rms_epsilon"]
             )
+
+    def all_tensors(self):
+        result = [self.token_embd, self.output, self.output_norm]
+        for block in self.blocks:
+            result.extend(block.all_tensors())
+        return result
+
+    def detailed_description(self):
+        result = "Info:\n"
+        for key, value in self.info.items():
+            result += f"{key} {repr(value)[:100]}\n"
         
+        all_tensors = self.all_tensors()
+
+        result += "\nBlocks:\n"
+        for tensor in all_tensors:
+            result += tensor.name + "\n"
+
+        return result
+
+
     def _fix(self, attn):
         shape = attn.weight.shape
         weights = attn.weight
@@ -290,8 +313,8 @@ def forward_pass(model, tokens, num_layers, eps):
         x = x + attn_out  # residual
 
         # -- FFN sub-block --
-        #ffn_in = rms_norm(x, blk.attn_norm.weight, eps)
-        ffn_in = x
+        ffn_in = rms_norm(x, blk.ffn_norm.weight, eps)
+        # ffn_in = x
         gate  = ffn_in @ blk.ffn_gate.weight.T
         up    = ffn_in @ blk.ffn_up.weight.T
 
