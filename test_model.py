@@ -5,7 +5,7 @@ from model import Model
 from bpe import BPE
 
 def start():
-    model = Model.load("flcc.model")
+    model = Model.load("models/flcc/flcc.model")
     # Some sanity checking
     assert(model.n_heads == 8)
     assert(model.embedding_length == 1024)
@@ -15,7 +15,7 @@ def start():
 
 
     bpe = BPE()
-    bpe.read('flcc.bpe')
+    bpe.read('models/flcc/flcc.bpe')
     # Some sanity checking
     assert(bpe.start.id == 2)
     assert(bpe.end.id == 3)
