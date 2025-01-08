@@ -18,7 +18,6 @@ from dataclasses import dataclass
 
 @dataclass
 class ModelArgs:
-    # @formatter:off
     # Model params for ./stories15M.model.npz
     dim: int                    = 288       # D
     n_layers: int               = 6
@@ -29,13 +28,27 @@ class ModelArgs:
     max_new_tokens: int         = 50
     norm_eps: float             = 1e-6
     max_batch_size: int         = 1
-    # @formatter:on
 # /config
+
+# Info:
+# general.size_label '111M'
+# llama.vocab_size 16384
+# llama.context_length 1536
+# llama.embedding_length 1024
+# llama.block_count 6
+# llama.feed_forward_length 2816
+# llama.rope.dimension_count 128
+# llama.attention.head_count 8
+# llama.attention.head_count_kv 8
+# llama.attention.layer_norm_rms_epsilon 9.999999974752427e-07
+# llama.rope.freq_base 10000.0
+# general.quantization_version 2
+
+
 
 DIM = 1024 # who knows!
 MAX_SEQ_LEN = 1024
 MAX_BATCH_SIZE = 1 # ? don't ask me, i just work here!
-MAX_NEW_TOKENS = 50 # woot?
 
 Shape = TypeVar("Shape")
 
@@ -98,7 +111,6 @@ def repeat_kv(x: Array, n_rep: int):
     z: Array = np.repeat(x, n_rep, axis=2)
     return z
 
-
 def feed_forward(up_weight: Array, gate_weight: Array, down_weight: Array, in_x: Array):
         # FD = 2 * 4 * D / 3
         swish: Array = silu(in_x @ gate_weight)
@@ -106,20 +118,6 @@ def feed_forward(up_weight: Array, gate_weight: Array, down_weight: Array, in_x:
         x: Array = swish * x_V
         x1: Array = x @ down_weight
         return x1
-    
-# class FeedForward:
-#     def __init__(self, up_weight: Array, gate_weight: Array, down_weight: Array):
-#         self.up_weight = up_weight.T
-#         self.gate_weight = gate_weight.T
-#         self.down_weight = down_weight.T
-
-#     def calc(self, x: Array):
-#         # FD = 2 * 4 * D / 3
-#         swish: Array = silu(x @ self.gate_weight)
-#         x_V: Array = x @ self.up_weight
-#         x: Array = swish * x_V
-#         x: Array = x @ self.down_weight
-#         return x
 
 def rms_norm(weight: Array, eps: float, x: Array):
         z: Array = (x ** 2).mean(-1, keepdims=True) + eps
@@ -139,6 +137,7 @@ def calc_attention(block: Block, x: Array, start_pos: int, mask: Optional[Array]
         v_weight: Array = block.attn_v.weight.T
         o_weight: Array = block.attn_output.weight.T
 
+        # 1, 1024, 8, 128
         cache_k = np.zeros((MAX_BATCH_SIZE, MAX_SEQ_LEN, n_local_kv_heads, head_dim))
         cache_v = np.zeros((MAX_BATCH_SIZE, MAX_SEQ_LEN, n_local_kv_heads, head_dim))
 
@@ -187,55 +186,42 @@ def calc_attention(block: Block, x: Array, start_pos: int, mask: Optional[Array]
         return output
 
 
-class TransformerBlock:
-    def __init__(self, block: Block, model: Model, bpe):      
-        self.block = block;  
-        # self.feed_forward = FeedForward(
-        #     block.ffn_up.weight, # weight.get(f"model.layers.{layer_id}.mlp.up_proj.weight"),
-        #     block.ffn_gate.weight, # weight.get(f"model.layers.{layer_id}.mlp.gate_proj.weight"),
-        #     block.ffn_down.weight # weight.get(f"model.layers.{layer_id}.mlp.down_proj.weight"),
-        # )
-        # self.input_layernorm = rms_norm(
-        #     block.ffn_norm.weight, # weight.get(f"model.layers.{layer_id}.input_layernorm.weight"),
-        #     eps=model.eps
-        # )
-        # self.post_attention_layernorm = rms_norm(
-        #     block.attn_norm.weight, # weight.get(f"model.layers.{layer_id}.post_attention_layernorm.weight"),
-        #     eps=model.eps
-        # )
+# class TransformerBlock:
+#     def __init__(self, block: Block, model: Model, bpe):
+#         self.block = block;  
 
-    def calc(self, x: Array, start_pos: int, mask: Array,
-                 freqs_cos: Array, freqs_sin: Array, eps: float):
-        # RMSNorm
-        # norm_x: Array = self.input_layernorm.calc(x)
-        norm_x: Array = rms_norm(self.block.ffn_norm.weight, eps, x)
-        # self.input_layernorm = rms_norm(
-        #     block.ffn_norm.weight, # weight.get(f"model.layers.{layer_id}.input_layernorm.weight"),
-        #     eps=model.eps
-        # )
+def tranformer_calc(block: Block, x: Array, start_pos: int, mask: Array,
+                freqs_cos: Array, freqs_sin: Array, eps: float):
+    # RMSNorm
+    # norm_x: Array = self.input_layernorm.calc(x)
+    norm_x: Array = rms_norm(block.ffn_norm.weight, eps, x)
+    # self.input_layernorm = rms_norm(
+    #     block.ffn_norm.weight, # weight.get(f"model.layers.{layer_id}.input_layernorm.weight"),
+    #     eps=model.eps
+    # )
 
-        # Masked Multi-Head Attention
-        h1: Array = calc_attention(self.block, norm_x, start_pos, mask, freqs_cos, freqs_sin)
-        z = x + h1
+    # Masked Multi-Head Attention
+    h1: Array = calc_attention(block, norm_x, start_pos, mask, freqs_cos, freqs_sin)
+    z = x + h1
 
-        # RMSNorm
-        # norm_z = self.post_attention_layernorm.calc(z)
-        norm_z = rms_norm(self.block.attn_norm.weight, eps, z)
-        # self.post_attention_layernorm = rms_norm(
-        #     block.attn_norm.weight, # weight.get(f"model.layers.{layer_id}.post_attention_layernorm.weight"),
-        #     eps=model.eps
-        # )
+    # RMSNorm
+    # norm_z = self.post_attention_layernorm.calc(z)
+    norm_z = rms_norm(block.attn_norm.weight, eps, z)
+    # self.post_attention_layernorm = rms_norm(
+    #     block.attn_norm.weight, # weight.get(f"model.layers.{layer_id}.post_attention_layernorm.weight"),
+    #     eps=model.eps
+    # )
 
-        # Feed Forward + SwiGLU
-        # h2: Array = self.feed_forward.calc(norm_z)
-        h2: Array = feed_forward(self.block.ffn_up.weight.T, self.block.ffn_gate.weight.T, self.block.ffn_down.weight.T, norm_z)
-        #     block.ffn_up.weight, # weight.get(f"model.layers.{layer_id}.mlp.up_proj.weight"),
-        #     block.ffn_gate.weight, # weight.get(f"model.layers.{layer_id}.mlp.gate_proj.weight"),
-        #     block.ffn_down.weight # weight.get(f"model.layers.{layer_id}.mlp.down_proj.weight"),
+    # Feed Forward + SwiGLU
+    # h2: Array = self.feed_forward.calc(norm_z)
+    h2: Array = feed_forward(block.ffn_up.weight.T, block.ffn_gate.weight.T, block.ffn_down.weight.T, norm_z)
+    #     block.ffn_up.weight, # weight.get(f"model.layers.{layer_id}.mlp.up_proj.weight"),
+    #     block.ffn_gate.weight, # weight.get(f"model.layers.{layer_id}.mlp.gate_proj.weight"),
+    #     block.ffn_down.weight # weight.get(f"model.layers.{layer_id}.mlp.down_proj.weight"),
 
-        out = z + h2
+    out = z + h2
 
-        return out
+    return out
 
 
 class Llama:
@@ -247,10 +233,6 @@ class Llama:
 
         # RoPE #1
         self.freqs_cos, self.freqs_sin = compute_cos_sin_cache(DIM // model.n_heads, MAX_SEQ_LEN)
-
-        self.layers = []
-        for id in range(model.block_count):
-            self.layers.append(TransformerBlock(model.blocks[id], model, bpe))
 
         # self.norm = RMSNorm(model.output_norm.weight, eps=model.eps) # weight.get("model.norm.weight"), eps=model.eps)
         self.lm_head_weight: Array = model.output.weight.T # weight.get("lm_head.weight").T
@@ -271,12 +253,15 @@ class Llama:
             mask = np.concatenate([np.zeros((L, start_pos)), mask], axis=1)
 
         # Transformer Layers
-        for i, layer in enumerate(self.layers):
-            h: Array = layer.calc(h, start_pos, mask, freqs_cos, freqs_sin, model.eps)
+        for id in range(model.block_count):
+            block = model.blocks[id]
+            h2: Array = tranformer_calc(block, h, start_pos, mask, freqs_cos, freqs_sin, model.eps)
+            h = h2
 
         # RMSNorm
         # h: Array = self.norm.calc(h)
-        h: Array = rms_norm(model.output_norm.weight, model.eps, h) # weight.get("model.norm.weight"), eps=model.eps)
+        h3: Array = rms_norm(model.output_norm.weight, model.eps, h) # weight.get("model.norm.weight"), eps=model.eps)
+        h = h3
         # Only forward the output from the last position.
         # ["B, 1, VS"] = ["B, 1(L), D"] @ ["D, VS"]
         logit: Array = h[:, [-1], :] @ self.lm_head_weight
@@ -311,10 +296,11 @@ class Llama:
             next_id = logits[:, -1, :].argmax(-1, keepdims=True)
             yield next_id
 
-
 if __name__ == '__main__':
     model = Model.load("models/flcc/flcc.model")
     # model.fix()
+    print(model.detailed_description())
+
     bpe = BPE()
     bpe.read('models/flcc/flcc.bpe')
 
@@ -340,6 +326,7 @@ class Foo
     # print(result)
     # print(bpe.decode_token(result[0][0]))
 
+    MAX_NEW_TOKENS = 100
     for id in llama.generate_old(input_ids, MAX_NEW_TOKENS):
         L += 1
         output_id = id[0].tolist()
