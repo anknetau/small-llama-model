@@ -35,14 +35,18 @@ class Foo
     {
         bool x """
 
-    print(str)
-    tokens = bpe.encode(str, model.embedding_length)
+    str = "bool x = "
+    print("input:", str.encode())
+    print("some expected:", bpe.simple_encode("true;"))
+    print("some expected:", bpe.simple_encode("false;"))
 
-    print(tokens)
+    tokens = bpe.encode(str, model.embedding_length, fill=False, start=True, end=False)
+
+    print("tokens:", tokens)
 
     result = model.run_pass(tokens)
 
-    print(bpe.decode_token(result))
+    print("result:", bpe.decode_token(result))
 
     # for i in range(len(str)):
     #     print(f"ID #{i} is \"" + str[i] + "\"")

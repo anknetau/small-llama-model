@@ -116,7 +116,7 @@ class Model:
         attn.weight = weights
 
     def fix(self):
-        print("TINKERING WITH ATTN K/Q")
+        print("WARNING: TINKERING WITH ATTN K/Q")
         # not sure if needed.
         # see https://github.com/99991/pygguf/blob/main/test.py#L38C48-L38C49
         for block in self.blocks:
@@ -128,13 +128,23 @@ class Model:
         logits = forward_pass(self, input, self.block_count, self.eps)
         logits_last = logits[-1]
         temperature = 0
-        print(logits_last)
+        print("logits_last:", logits_last)
         if temperature > 0:
             probs = softmax(logits_last, temperature=temperature)
             next_token = np.random.choice(len(probs), p=probs)
         else:
+            w = 0
+            m = 0
+            for i in range(len(logits_last)):
+                if logits_last[i] > w:
+                    m = i
+                    w = logits_last[i]
+            print("max:", w, m, logits_last[m])
+            min = np.argmin(logits_last)
+            print("min:", min, logits_last[min])
+            print("other:", logits_last[649], logits_last[700])
             next_token = np.argmax(logits_last)
-        print(next_token)
+            assert(next_token == m)
         return next_token
 
 def rms_norm(hidden, weight, eps):

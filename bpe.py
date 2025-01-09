@@ -80,9 +80,10 @@ class BPE:
             str = str[len(m[0].string):]
         return result
 
-    def encode(self, str, max, fill=True, end=False) -> list[int]:
+    def encode(self, str, max, fill=True, start=True, end=False) -> list[int]:
         matches = self.simple_encode(str)
-        matches.insert(0, self.start.id)
+        if start:
+            matches.insert(0, self.start.id)
         if end:
             matches.append(self.end.id)
         if fill:
