@@ -51,8 +51,8 @@ def check_flcc():
     str = sample_input()
 
     print("input:", str.encode())
-    print("some expected:", bpe.simple_encode("true;"))
-    print("some expected:", bpe.simple_encode("false;"))
+    print("another token:", bpe.simple_encode("true;"))
+    print("another token:", bpe.simple_encode("false;"))
 
     tokens = bpe.encode(str, flcc_model.embedding_length, fill=False, start=True, end=False)
 

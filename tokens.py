@@ -16,8 +16,8 @@ class Specials:
     start: Special
     end: Special
     padding: Special
-    addStart: bool | None
-    addEnd: bool | None
+    addStart: bool = False
+    addEnd: bool = False
 
     def all(self):
         return [self.unknown, self.start, self.end, self.padding]        
