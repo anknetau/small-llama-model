@@ -56,6 +56,7 @@ class Model:
     embedding_length: int
     n_heads: int
     eps: float
+    name: str
     
     @staticmethod
     def load(filename):
@@ -81,7 +82,8 @@ class Model:
                 block_count = bc,
                 embedding_length = info["llama.embedding_length"],
                 n_heads = info["llama.attention.head_count"],
-                eps = info["llama.attention.layer_norm_rms_epsilon"]
+                eps = info["llama.attention.layer_norm_rms_epsilon"],
+                name = info["general.name"]
             )
 
     def all_tensors(self):

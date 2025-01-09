@@ -1,5 +1,6 @@
 #pyright: strict
 
 class Constants:
-    FLCC_CS_BPE = "models/flcc-cs/flcc.bpe"
-    FLCC_CS_MODEL = "models/flcc-cs/flcc.model"
+    BPE_FLCC_CS = "models/flcc-cs/flcc.bpe"
+    MODEL_FLCC_CS = "models/flcc-cs/flcc.model"
+    MODEL_LLAMA_39 = "models/llama-39m-Q5_K_M.gguf"

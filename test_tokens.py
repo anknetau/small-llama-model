@@ -9,7 +9,7 @@ from constants import Constants
 class TestExample(unittest.TestCase):
     def setUp(self):
         self.bpe = BPE()
-        self.bpe.read(Constants.FLCC_CS_BPE)
+        self.bpe.read(Constants.BPE_FLCC_CS)
 
     def test_something(self):
         bpe = self.bpe

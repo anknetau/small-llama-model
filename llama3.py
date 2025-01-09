@@ -267,12 +267,12 @@ class Llama:
             yield next_id
 
 def start():
-    model = Model.load(Constants.FLCC_CS_MODEL)
+    model = Model.load(Constants.MODEL_FLCC_CS)
     # model.fix()
     print(model.detailed_description())
 
     bpe = BPE()
-    bpe.read(Constants.FLCC_CS_BPE)
+    bpe.read(Constants.BPE_FLCC_CS)
 
     llama = Llama(model, bpe)
 
