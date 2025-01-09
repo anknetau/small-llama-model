@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass, field
-from numeric_lines_reader import read_numeric_lines, process_bases, process_rules, process_specials
+import numeric_lines_reader
 from tokens import Base, Rule, Special, Specials, IdAndString
 
 #pyright: strict
@@ -16,16 +16,13 @@ class BPE:
         self._cache: dict[int, Base|Rule|Special] = dict()
 
     def read_numeric_text_format(self, filename: str):
-        numbers = read_numeric_lines(filename)
-        base_count = numbers[0][0]
-        rules_count = numbers[0][1]
-        self.bases = process_bases(numbers[1:base_count+1])
-        self.rules = process_rules(numbers[base_count+1:base_count+1+rules_count])
-        last_line = numbers[base_count+1+rules_count]
-        self.specials = process_specials(last_line)
-        assert(len(numbers) == base_count+rules_count+2)
+        (bases, rules, specials) = numeric_lines_reader.read(filename)
+        self.bases = bases
+        self.rules = rules
+        self.specials = specials
         self._index()
         self.table = self._build_simple_table()
+
 
     def _build_simple_table(self):
         table: list[IdAndString] = []

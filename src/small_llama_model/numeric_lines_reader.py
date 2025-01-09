@@ -2,6 +2,17 @@ from tokens import Base, Rule, Special, Specials
 
 #pyright: strict
 
+def read(filename: str):
+    numbers = read_numeric_lines(filename)
+    base_count = numbers[0][0]
+    rules_count = numbers[0][1]
+    bases = process_bases(numbers[1:base_count+1])
+    rules = process_rules(numbers[base_count+1:base_count+1+rules_count])
+    last_line = numbers[base_count+1+rules_count]
+    specials = process_specials(last_line)
+    assert(len(numbers) == base_count+rules_count+2)
+    return (bases, rules, specials)
+
 def read_numeric_lines(filename: str):
     all_numbers: list[list[int]] = []
     with open(filename, 'r') as file:
