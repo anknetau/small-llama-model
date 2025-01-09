@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass, field
-from tokens import Rule, Special, Specials, GToken, IdAndString, AToken
+from tokens import Rule, Special, Specials, GToken, IdAndString, AToken, GTType
 from abc import abstractmethod
 
 #pyright: strict
@@ -23,15 +23,26 @@ class BPE:
     def read(self, reader: BPEReader):
         (input, specials, vocab_size) = reader.read()
         self.gtokens = [t for t in input if isinstance(t, GToken)]
+        self._process_gtokens()
         self.rules = [t for t in input if isinstance(t, Rule)]
-        for i in range(300):
-            xxx = input[i]
-            if isinstance(xxx, GToken):
-                print(xxx.type, xxx.str, xxx.str[0])
         self.specials = specials
         self.vocab_size = vocab_size
         self._fill_index()
         self.table = self._build_simple_table()
+
+    def _process_gtokens(self):
+        # BYTE tokens are converted to NORMAL
+        byteMap = [f"<0x{i:02X}>" for i in range(256)]
+        self.gtokens = [self._filterGToken(gt, byteMap) for gt in self.gtokens]
+
+    def _filterGToken(self, gt: GToken, byteMap: list[str]) -> GToken:
+        if gt.type != GTType.BYTE:
+                return gt
+        for i, str in enumerate(byteMap):
+            if str == gt.str:
+                return GToken(gt.id, chr(i), gt.score, GTType.NORMAL)
+        raise ValueError(f"Can't parse byte {gt.str}")
+
 
     def _build_simple_table(self):
         table: list[IdAndString] = []
