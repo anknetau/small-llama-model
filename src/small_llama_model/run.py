@@ -82,7 +82,6 @@ def check_llama():
     bpe = BPE()
     bpe.read(GGUFReader(llama_model))
 
-    # tokenizer = GTokenizer.make(llama_model)
     # vocab_size: int = llama_model.info["llama.vocab_size"]
     # assert(vocab_size == len(tokenizer.tokens))
     # print(model.detailed_description())

@@ -60,12 +60,12 @@ class Specials:
         return [self.unknown, self.start, self.end, self.padding]        
 
 class GTType(Enum):
-    NORMAL=1
+    NORMAL=1 # Has a string
     UNKNOWN=2
     CONTROL=3
     USER_DEFINED=4
     UNUSED=5
-    BYTE=6
+    BYTE=6 # is based on a byte like "<0xFF>"
 
     @classmethod
     def is_valid(cls, value: int) -> bool:
