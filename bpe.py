@@ -150,7 +150,7 @@ class BPE:
             return chr(result.char) + ""
         if isinstance(result, Rule):
             return self.decode_token(result.a) + self.decode_token(result.b)
-        if isinstance(result, Special): # type: ?
+        if isinstance(result, Special): # type: ignore
             return result.desc
         assert False, "result was " + str(result)
 
