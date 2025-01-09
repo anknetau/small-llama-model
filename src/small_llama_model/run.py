@@ -4,7 +4,7 @@ from constants import Constants
 from model import Model
 from bpe import BPE
 from checks import assert_check_model
-import a
+import token_reader_impl
 
 #pyright: strict
 
@@ -29,7 +29,7 @@ def check_flcc():
     assert_check_model(flcc_model)
 
     bpe = BPE()
-    bpe.read(a.NumericLinesReader(Constants.BPE_FLCC_CS))
+    bpe.read(token_reader_impl.NumericLinesReader(Constants.BPE_FLCC_CS))
     # Some sanity checking
     assert(bpe.specials.start.id == 2)
     assert(bpe.specials.end.id == 3)
@@ -58,7 +58,7 @@ def check_llama():
     assert_check_model(llama_model)
 
     bpe = BPE()
-    bpe.read(a.GGUFReader(llama_model))
+    bpe.read(token_reader_impl.GGUFReader(llama_model))
 
     # vocab_size: int = llama_model.info["llama.vocab_size"]
     # assert(vocab_size == len(tokenizer.tokens))

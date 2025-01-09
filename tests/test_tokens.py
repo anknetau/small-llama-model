@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
 import unittest
-from bpe import BPE
-from constants import Constants
-import a
+from small_llama_model.bpe import BPE
+from small_llama_model.constants import Constants
+from small_llama_model import token_reader_impl
 
 #pyright: strict
 
 class TestTokens(unittest.TestCase):
     def setUp(self):
         self.bpe = BPE()
-        self.bpe.read(a.NumericLinesReader(Constants.BPE_FLCC_CS))
+        self.bpe.read(token_reader_impl.NumericLinesReader(Constants.BPE_FLCC_CS))
 
     def test_bpe(self):
         bpe = self.bpe
