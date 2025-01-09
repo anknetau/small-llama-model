@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from constants import Constants
 import gguf
 from model import Model
 from bpe import BPE
@@ -22,12 +23,9 @@ from gtokenizer import GTokenizer
 
 def start():
     bpe = BPE()
-    bpe.read('models/flcc/flcc.bpe')
+    bpe.read(Constants.FLCC_CS_BPE)
     assert(bpe.start.id == 2)
     assert(bpe.end.id == 3)
-    print(bpe.simple_encode("bool x = true;"))
-    print(bpe.encode("bool x = true;", 10))
-    print(bpe.decode(bpe.encode("bool x = true;", 10)))
 
     model = Model.load("models/llama-39m-Q5_K_M.gguf")
     tokenizer = GTokenizer.make(model)
@@ -52,7 +50,7 @@ def start():
 
 
     bpe = BPE()
-    bpe.read('models/flcc/flcc.bpe')
+    bpe.read(Constants.FLCC_CS_BPE)
     # Some sanity checking
     assert(bpe.start.id == 2)
     assert(bpe.end.id == 3)

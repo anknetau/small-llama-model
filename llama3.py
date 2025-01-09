@@ -8,6 +8,7 @@ import time
 from typing import TypeVar, Generic, Optional
 from model import Model, Block
 from bpe import BPE
+from constants import Constants
 
 import numpy as np
 from numpy import ndarray
@@ -266,12 +267,12 @@ class Llama:
             yield next_id
 
 def start():
-    model = Model.load("models/flcc/flcc.model")
+    model = Model.load(Constants.FLCC_CS_MODEL)
     # model.fix()
     print(model.detailed_description())
 
     bpe = BPE()
-    bpe.read('models/flcc/flcc.bpe')
+    bpe.read(Constants.FLCC_CS_BPE)
 
     llama = Llama(model, bpe)
 

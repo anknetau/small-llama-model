@@ -2,13 +2,14 @@
 
 import unittest
 from bpe import BPE
+from constants import Constants
 
 #pyright: strict
 
 class TestExample(unittest.TestCase):
     def setUp(self):
         self.bpe = BPE()
-        self.bpe.read('models/flcc/flcc.bpe')
+        self.bpe.read(Constants.FLCC_CS_BPE)
 
     def test_something(self):
         bpe = self.bpe
