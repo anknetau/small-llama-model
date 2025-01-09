@@ -59,36 +59,24 @@ def check_llama():
 
     bpe = BPE()
     bpe.read(token_reader_impl.GGUFReader(llama_model))
+    assert(bpe.vocab_size == 32000 == len(bpe.gtokens))
 
-    # vocab_size: int = llama_model.info["llama.vocab_size"]
-    # assert(vocab_size == len(tokenizer.tokens))
-    # print(model.detailed_description())
+    print(llama_model.detailed_description())
 
-    # tokens = bpe.encode(str, llama_model.embedding_length, fill=False, start=True, end=False)
+    str = "Hello "
+    tokens = bpe.encode(str, llama_model.embedding_length, fill=False, start=True, end=False)
 
-    # print("tokens:", tokens)
+    str2 = bpe.decode(tokens)
+    print("tokens:", tokens, str2.encode())
 
-    # result = llama_model.run_pass(tokens)
+    result = llama_model.run_pass(tokens)
 
-    # print("result:", bpe.decode_token(result))
+    print("result:", bpe.decode_token(result))
 
 
 def start():
-    check_flcc()
     check_llama()
+    # check_flcc()
 
-    return 
-    for r in bpe.rules:
-        rr = bpe.find(r.a)
-        if rr is None:
-            print(f"not found: {r.a}")
-            return
-
-        rr = bpe.find(r.b)
-        if rr is None:
-            print(f"not found: {r.b}")
-            return
-
-        print(f"ID #{r.c} is \"" + bpe.decode(r.c) + "\"")
-
-start()
+if __name__ == '__main__':
+    start()
