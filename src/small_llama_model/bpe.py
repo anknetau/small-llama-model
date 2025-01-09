@@ -1,29 +1,35 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass, field
-import numeric_lines_reader
 from tokens import Base, Rule, Special, Specials, IdAndString
+from abc import abstractmethod
 
 #pyright: strict
+
+class BPEReader:
+    @abstractmethod
+    def read(self) -> tuple[list[Base], list[Rule], Specials, int]:
+        raise NotImplementedError
+
 
 @dataclass
 class BPE:
     bases: list[Base] = field(default_factory=list)
     rules: list[Rule] = field(default_factory=list)
-    vocab_size: int = 16384
+    vocab_size: int = 0
 
     def __post_init__(self):
         self._cache: dict[int, Base|Rule|Special] = dict()
 
-    def read_numeric_text_format(self, filename: str):
-        (bases, rules, specials) = numeric_lines_reader.read(filename)
+    def read(self, reader: BPEReader):
+        (bases, rules, specials, vocab_size) = reader.read()
         self.bases = bases
         self.rules = rules
         self.specials = specials
-        self._index()
+        self.vocab_size = vocab_size
+        self._fill_index()
         self.table = self._build_simple_table()
-
-
+    
     def _build_simple_table(self):
         table: list[IdAndString] = []
         for i in range(self.vocab_size):
@@ -66,13 +72,13 @@ class BPE:
         matches = self._find_matches(str)
         return [m.id for m in matches]
 
-    def _index(self):
-        for b in self.bases:
-            self._cache[b.id] = b
-        for r in self.rules:
-            self._cache[r.c] = r
-        for s in self.specials.all():
-            self._cache[s.id] = s
+    def _fill_index(self):
+        for base in self.bases:
+            self._cache[base.id] = base
+        for rule in self.rules:
+            self._cache[rule.c] = rule
+        for special in self.specials.all():
+            self._cache[special.id] = special
 
     def find(self, id: int) -> None|Base|Special|Rule:
         return self._cache.get(id)

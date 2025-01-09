@@ -2,10 +2,8 @@
 
 from constants import Constants
 from model import Model
-from bpe import BPE
+from bpe import BPE, BPEReader
 from checks import assert_check_model
-
-from gtokenizer import GTokenizer
 
 #pyright: strict
 
@@ -19,6 +17,23 @@ from gtokenizer import GTokenizer
 # tokenizer.ggml.unknown_token_id 0
 # tokenizer.ggml.add_bos_token True
 # tokenizer.ggml.add_eos_token False
+
+# READERS - TODO: moveme
+import numeric_lines_reader
+import token_reader_gguf
+from tokens import Base, Rule, Specials
+from typing import Any, TypeAlias, Callable
+
+class NumericLinesReader(BPEReader):
+    def __init__(self, filename: str):
+        self.filename = filename
+
+    def read(self) -> tuple[list[Base], list[Rule], Specials, int]:
+        return numeric_lines_reader.read(self.filename)
+
+# /READERS
+
+
 
 def sample_input():
     str = "if (token.Type != TokenType.Number && token.Type != TokenType.String)"
@@ -40,7 +55,7 @@ def check_flcc():
     assert_check_model(flcc_model)
 
     bpe = BPE()
-    bpe.read_numeric_text_format(Constants.BPE_FLCC_CS)
+    bpe.read(NumericLinesReader(Constants.BPE_FLCC_CS))
     # Some sanity checking
     assert(bpe.specials.start.id == 2)
     assert(bpe.specials.end.id == 3)
@@ -68,9 +83,12 @@ def check_llama():
     llama_model = Model.load(Constants.MODEL_LLAMA_39)
     assert_check_model(llama_model)
 
-    tokenizer = GTokenizer.make(llama_model)
-    vocab_size: int = llama_model.info["llama.vocab_size"]
-    assert(vocab_size == len(tokenizer.tokens))
+    bpe = BPE()
+    # bpe.read(llama_model)
+
+    # tokenizer = GTokenizer.make(llama_model)
+    # vocab_size: int = llama_model.info["llama.vocab_size"]
+    # assert(vocab_size == len(tokenizer.tokens))
     # print(model.detailed_description())
 
     # tokens = bpe.encode(str, llama_model.embedding_length, fill=False, start=True, end=False)

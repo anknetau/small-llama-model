@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from model import Model
-from typing import Any
-from typing import Callable
+from typing import Any, Callable
 from tokens import Specials
 
 #pyright: strict

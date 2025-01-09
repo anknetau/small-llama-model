@@ -11,7 +11,8 @@ def read(filename: str):
     last_line = numbers[base_count+1+rules_count]
     specials = process_specials(last_line)
     assert(len(numbers) == base_count+rules_count+2)
-    return (bases, rules, specials)
+    vocab_size = 16384
+    return (bases, rules, specials, vocab_size)
 
 def read_numeric_lines(filename: str):
     all_numbers: list[list[int]] = []
