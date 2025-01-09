@@ -40,6 +40,8 @@ class BPE:
     _baseCache: dict[int, Base] = field(default_factory=dict)
     _ruleCache: dict[int, Rule] = field(default_factory=dict)
     _specialCache: dict[int, Special] = field(default_factory=dict)
+    vocab_size: int = 16384
+
     def read(self, filename):
         numbers = self._read_lines(filename)
         base_count = numbers[0][0]
@@ -54,7 +56,7 @@ class BPE:
 
     def _build_simple_table(self):
         table = []
-        for i in range(16384):
+        for i in range(self.vocab_size):
             r = self.find(i)
             if r is None:
                 print("ERROR: ID not found " + str(i))

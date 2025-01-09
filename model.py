@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import gguf
 import numpy as np
 import math
+from typing import Any
 
 @dataclass
 class Tensor:
@@ -50,7 +51,7 @@ class Model:
     output: Tensor
     output_norm: Tensor
     blocks: list[Block]
-    info: dict
+    info: dict[str, Any]
     block_count: int
     embedding_length: int
     n_heads: int
