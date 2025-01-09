@@ -1,6 +1,7 @@
 #!/bin/sh
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd ${script_dir}/tests
+cd ${script_dir}
 
-PYTHONPATH=${script_dir}/src/small_llama_model pytest
+export PYTHONPATH=${script_dir}/src:${script_dir}/src/small_llama_model
+pytest

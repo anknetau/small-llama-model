@@ -25,7 +25,7 @@ def read(model: Model):
 
     makeToken: Callable[[int], GToken] = lambda i: GToken(i, tokens[i], scores[i], GTType.make(token_types[i]))
     gtokens: list[AToken] = [makeToken(i) for i in range(len(tokens))]
-    makeSpecial: Callable[[GToken], Special] = lambda gtoken: Special(gtoken.id, gtoken.str)
+    makeSpecial: Callable[[AToken], Special] = lambda t: Special(t.id, t.str) # type: ignore
 
     unknown = makeSpecial(gtokens[info_int("unknown_token_id")])
     start = makeSpecial(gtokens[info_int("bos_token_id")])
