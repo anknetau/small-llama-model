@@ -1,14 +1,21 @@
 #pyright: strict
 
-from tokens import Base, Rule, Special, Specials
+from tokens import Special, Specials, GToken, GTType
 from model import Model
 from typing import Any, Callable
+
+# tokenizer.ggml.model 'llama'
+# tokenizer.ggml.pre 'default'
+# tokenizer.ggml.tokens ['<unk>', '<s>', '</s>', '<0x00>', '<0x01>', '<0x02>', '<0x03>', '<0x04>', '<0x05>', '<0x06>', '<0x0
+# tokenizer.ggml.scores [-1000.0, -1000.0, -1000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.
+# tokenizer.ggml.token_type [3, 3, 3, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 
 
 PREFIX = "tokenizer.ggml."
 
 def read(model: Model):
     named: Callable[[str], str] = lambda s: PREFIX + s
     info: Callable[[str], Any] = lambda s: model.info[named(s)]
+    info_int: Callable[[str], int] = lambda s: model.info[named(s)]
 
     tokens: list[str] = info("tokens")
     token_types: list[int] = info("token_type")
@@ -16,28 +23,22 @@ def read(model: Model):
 
     assert(len(tokens) == len(scores) == len(token_types))
 
-    # makeToken: Callable[[int], GToken] = lambda i: GToken(i, tokens[i], scores[i], TType.make(token_types[i]))
-    # gtokens = [makeToken(i) for i in range(len(tokens))]
+    makeToken: Callable[[int], GToken] = lambda i: GToken(i, tokens[i], scores[i], GTType.make(token_types[i]))
+    gtokens = [makeToken(i) for i in range(len(tokens))]
+    makeSpecial: Callable[[GToken], Special] = lambda gtoken: Special(gtoken.id, gtoken.str)
+
+    unknown = makeSpecial(gtokens[info_int("unknown_token_id")])
+    start = makeSpecial(gtokens[info_int("bos_token_id")])
+    end = makeSpecial(gtokens[info_int("eos_token_id")])
 
     specials = Specials(
-        unknown = info("unknown_token_id"),
-        start = info("bos_token_id"),
-        end = info("eos_token_id"),
-        padding = info("unknown_token_id"), # TODO
+        unknown = unknown,
+        start = start,
+        end = end,
+        padding = unknown, # TODO: not right!
         addStart = info("add_bos_token"),
         addEnd = info("add_eos_token")
     )
-    bases: list[Base] = []
-    rules: list[Rule] = []
-    vocab_size = len(tokens)
-    return (bases, rules, specials, vocab_size)
 
-# def read(filename: str):
-    # return (1, 2, 3, 4)
-    # bases = process_bases(numbers[1:base_count+1])
-    # rules = process_rules(numbers[base_count+1:base_count+1+rules_count])
-    # last_line = numbers[base_count+1+rules_count]
-    # specials = process_specials(last_line)
-    # assert(len(numbers) == base_count+rules_count+2)
-    # vocab_size = 16384
-    # return (bases, rules, specials, vocab_size)
+    vocab_size = len(tokens)
+    return (gtokens, specials, vocab_size)

@@ -1,35 +1,38 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass, field
-from tokens import Base, Rule, Special, Specials, IdAndString
+from tokens import Base, Rule, Special, Specials, GToken, IdAndString, AToken
 from abc import abstractmethod
 
 #pyright: strict
 
 class BPEReader:
     @abstractmethod
-    def read(self) -> tuple[list[Base], list[Rule], Specials, int]:
+    def read(self) -> tuple[list[AToken], Specials, int]:
         raise NotImplementedError
-
 
 @dataclass
 class BPE:
     bases: list[Base] = field(default_factory=list)
     rules: list[Rule] = field(default_factory=list)
+    gtokens: list[GToken] = field(default_factory=list)
     vocab_size: int = 0
 
     def __post_init__(self):
-        self._cache: dict[int, Base|Rule|Special] = dict()
+        self._cache: dict[int, AToken] = dict()
 
     def read(self, reader: BPEReader):
-        (bases, rules, specials, vocab_size) = reader.read()
-        self.bases = bases
-        self.rules = rules
+        (input, specials, vocab_size) = reader.read()
+        self.bases = [t for t in input if isinstance(t, Base)]
+        self.rules = [t for t in input if isinstance(t, Rule)]
+        self.gtokens = [t for t in input if isinstance(t, GToken)]
+        for i in range(10):
+            print(input[i])
         self.specials = specials
         self.vocab_size = vocab_size
         self._fill_index()
         self.table = self._build_simple_table()
-    
+
     def _build_simple_table(self):
         table: list[IdAndString] = []
         for i in range(self.vocab_size):
@@ -79,8 +82,10 @@ class BPE:
             self._cache[rule.c] = rule
         for special in self.specials.all():
             self._cache[special.id] = special
+        for gtoken in self.gtokens:
+            self._cache[gtoken.id] = gtoken
 
-    def find(self, id: int) -> None|Base|Special|Rule:
+    def find(self, id: int) -> 'None | AToken':
         return self._cache.get(id)
 
     def decode_token(self, id: int) -> str:
@@ -90,8 +95,10 @@ class BPE:
             return chr(result.char) + ""
         if isinstance(result, Rule):
             return self.decode_token(result.a) + self.decode_token(result.b)
-        if isinstance(result, Special): # type: ignore
+        if isinstance(result, Special):
             return result.desc
+        if isinstance(result, GToken): # type: ignore
+            return result.str
         assert False, "result was " + str(result)
 
     def decode(self, list: list[int]) -> str:

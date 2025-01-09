@@ -7,29 +7,25 @@ from checks import assert_check_model
 
 #pyright: strict
 
-# tokenizer.ggml.model 'llama'
-# tokenizer.ggml.pre 'default'
-# tokenizer.ggml.tokens ['<unk>', '<s>', '</s>', '<0x00>', '<0x01>', '<0x02>', '<0x03>', '<0x04>', '<0x05>', '<0x06>', '<0x0
-# tokenizer.ggml.scores [-1000.0, -1000.0, -1000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.
-# tokenizer.ggml.token_type [3, 3, 3, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 
-# tokenizer.ggml.bos_token_id 1
-# tokenizer.ggml.eos_token_id 2
-# tokenizer.ggml.unknown_token_id 0
-# tokenizer.ggml.add_bos_token True
-# tokenizer.ggml.add_eos_token False
-
 # READERS - TODO: moveme
-import numeric_lines_reader
+import token_reader_numeric_lines
 import token_reader_gguf
-from tokens import Base, Rule, Specials
+from tokens import Base, Rule, GToken, Specials, AToken
 from typing import Any, TypeAlias, Callable
 
 class NumericLinesReader(BPEReader):
     def __init__(self, filename: str):
         self.filename = filename
 
-    def read(self) -> tuple[list[Base], list[Rule], Specials, int]:
-        return numeric_lines_reader.read(self.filename)
+    def read(self) -> tuple[list[AToken], Specials, int]:
+        return token_reader_numeric_lines.read(self.filename)
+
+class GGUFReader(BPEReader):
+    def __init__(self, model: Model):
+        self.model = model
+
+    def read(self) -> tuple[list[AToken], Specials, int]:
+        return token_reader_gguf.read(self.model)
 
 # /READERS
 
@@ -84,7 +80,7 @@ def check_llama():
     assert_check_model(llama_model)
 
     bpe = BPE()
-    # bpe.read(llama_model)
+    bpe.read(GGUFReader(llama_model))
 
     # tokenizer = GTokenizer.make(llama_model)
     # vocab_size: int = llama_model.info["llama.vocab_size"]

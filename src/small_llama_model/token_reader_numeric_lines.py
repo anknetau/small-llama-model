@@ -1,8 +1,8 @@
-from tokens import Base, Rule, Special, Specials
+from tokens import Base, Rule, Special, Specials, AToken
 
 #pyright: strict
 
-def read(filename: str):
+def read(filename: str) -> tuple[list[AToken], Specials, int]:
     numbers = read_numeric_lines(filename)
     base_count = numbers[0][0]
     rules_count = numbers[0][1]
@@ -12,7 +12,10 @@ def read(filename: str):
     specials = process_specials(last_line)
     assert(len(numbers) == base_count+rules_count+2)
     vocab_size = 16384
-    return (bases, rules, specials, vocab_size)
+    all: list[AToken] = []
+    all.extend(bases)
+    all.extend(rules)
+    return (all, specials, vocab_size)
 
 def read_numeric_lines(filename: str):
     all_numbers: list[list[int]] = []
@@ -45,7 +48,7 @@ def process_specials(last_line: list[int]):
         padding = Special(last_line[1], "<|PADDING|>"),
         start = Special(last_line[2], "<|START|>"),
         end = Special(last_line[3], "<|END|>"),
-        addStart=None,
-        addEnd=None
+        addStart=True,
+        addEnd=False
     )
 
