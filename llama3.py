@@ -272,7 +272,7 @@ def start():
     print(model.detailed_description())
 
     bpe = BPE()
-    bpe.read(Constants.FLCC_CS_BPE)
+    bpe.read_numeric_text_format(Constants.BPE_FLCC_CS)
 
     llama = Llama(model, bpe)
 
@@ -300,7 +300,7 @@ class Foo
     for id in llama.generate_old(input_ids, MAX_NEW_TOKENS):
         L += 1
         output_id = id[0].tolist()
-        if output_id[-1] in [bpe.end.id, bpe.start.id]:
+        if output_id[-1] in [bpe.specials.end.id, bpe.specials.start.id]:
             break
         print(bpe.decode_token(output_id[-1]), end="")
         sys.stdout.flush()

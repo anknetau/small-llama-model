@@ -3,10 +3,11 @@ from enum import Enum
 from model import Model
 from typing import Any
 from typing import Callable
+from tokens import Specials
 
 #pyright: strict
 
-class GType(Enum):
+class TType(Enum):
     NORMAL=1
     UNKNOWN=2
     CONTROL=3
@@ -20,30 +21,22 @@ class GType(Enum):
         return value in cls._value2member_map_
 
     @classmethod
-    def make(cls, value: int) -> 'GType':
+    def make(cls, value: int) -> 'TType':
         if cls.is_valid(value):
-            return GType(value)
+            return TType(value)
         else:
             raise ValueError(f"Invalid token type {value}")
 
 @dataclass
 class GToken:
-    c: str
     id: int
+    c: str
     score: float
-    type: GType
+    type: TType
 
     # - `tokenizer.ggml.token_type: array[int32]`: The token type (1=normal, 2=unknown, 3=control, 4=user defined, 5=unused, 6=byte). If present, it must have the same length and index as `tokens`.
 
 PREFIX = "tokenizer.ggml."
-
-@dataclass
-class Specials:
-    unknown: int
-    bos: int
-    eos: int
-    add_bos: bool
-    add_eos: bool
 
 @dataclass
 class GTokenizer:
@@ -62,15 +55,16 @@ class GTokenizer:
 
         assert(len(tokens) == len(scores) == len(token_types))
 
-        makeToken: Callable[[int], GToken] = lambda i: GToken(tokens[i], i, scores[i], GType.make(token_types[i]))
+        makeToken: Callable[[int], GToken] = lambda i: GToken(i, tokens[i], scores[i], TType.make(token_types[i]))
         gtokens = [makeToken(i) for i in range(len(tokens))]
 
         specials = Specials(
             unknown = info("unknown_token_id"),
-            bos = info("bos_token_id"),
-            eos = info("eos_token_id"),
-            add_bos = info("add_bos_token"),
-            add_eos = info("add_eos_token")
+            start = info("bos_token_id"),
+            end = info("eos_token_id"),
+            padding = info("unknown_token_id"), # TODO
+            addStart = info("add_bos_token"),
+            addEnd = info("add_eos_token")
         )
 
         return GTokenizer(model, gtokens, specials)

@@ -9,12 +9,12 @@ from constants import Constants
 class TestTokens(unittest.TestCase):
     def setUp(self):
         self.bpe = BPE()
-        self.bpe.read(Constants.BPE_FLCC_CS)
+        self.bpe.read_numeric_text_format(Constants.BPE_FLCC_CS)
 
     def test_bpe(self):
         bpe = self.bpe
-        self.assertEqual(bpe.start.id, 2)
-        self.assertEqual(bpe.end.id, 3)
+        self.assertEqual(bpe.specials.start.id, 2)
+        self.assertEqual(bpe.specials.end.id, 3)
         simple_encode = bpe.simple_encode("bool x = true;")
         self.assertEqual(simple_encode, [450, 4315, 649])
         filled = bpe.encode("bool x = true;", 10, fill=True, start=True, end=True)

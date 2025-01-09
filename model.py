@@ -131,7 +131,7 @@ class Model:
             self._fix(block.attn_q)
         return
 
-    def run_pass(self, input: SomeNPArray):
+    def run_pass(self, input: list[int]) -> int:
         logits = forward_pass(self, input, self.block_count, self.eps)
         logits_last = logits[-1]
         temperature = 0
@@ -140,7 +140,7 @@ class Model:
             probs = softmax_all(apply_temp(logits_last, temperature))
             next_token = np.random.choice(len(probs), p=probs)
         else:
-            next_token = np.argmax(logits_last)
+            next_token = np.argmax(logits_last).item()
         return next_token
 
 def rms_norm(hidden: SomeNPArray, weight: SomeNPArray, eps: float):
@@ -276,7 +276,7 @@ def self_attn_llama(q: SomeNPArray, k: SomeNPArray, v: SomeNPArray, n_heads: int
     context = context.reshape(seq_len, hidden_size)
     return context
 
-def forward_pass(model: Model, tokens: SomeNPArray, num_layers: int, eps: float):
+def forward_pass(model: Model, tokens: list[int], num_layers: int, eps: float):
     x = model.token_embd.weight[tokens, :]
 
     for i in range(num_layers):
