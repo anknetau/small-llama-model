@@ -20,8 +20,15 @@ from gtokenizer import GTokenizer
 # tokenizer.ggml.add_bos_token True
 # tokenizer.ggml.add_eos_token False
 
-
 def start():
+    bpe = BPE()
+    bpe.read('models/flcc/flcc.bpe')
+    assert(bpe.start.id == 2)
+    assert(bpe.end.id == 3)
+    print(bpe.simple_encode("bool x = true;"))
+    print(bpe.encode("bool x = true;", 10))
+    print(bpe.decode(bpe.encode("bool x = true;", 10)))
+
     model = Model.load("models/llama-39m-Q5_K_M.gguf")
     tokenizer = GTokenizer.make(model)
     vocab_size: int = model.info["llama.vocab_size"]

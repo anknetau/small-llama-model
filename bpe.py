@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from dataclasses import field
 
+#pyright: strict
+
 @dataclass
 class Special:
     id: int
@@ -42,7 +44,7 @@ class BPE:
     _specialCache: dict[int, Special] = field(default_factory=dict)
     vocab_size: int = 16384
 
-    def read(self, filename):
+    def read(self, filename: str):
         numbers = self._read_lines(filename)
         base_count = numbers[0][0]
         rules_count = numbers[0][1]
@@ -55,34 +57,31 @@ class BPE:
         self.table = self._build_simple_table()
 
     def _build_simple_table(self):
-        table = []
+        table: list[IdAndString] = []
         for i in range(self.vocab_size):
             r = self.find(i)
             if r is None:
-                print("ERROR: ID not found " + str(i))
-                return
-            # print(f"ID #{i} is \"" + bpe.decode(i) + "\"")
+                raise ValueError("ID not found " + str(i))
             table.append(IdAndString(i, self.decode_token(i)))
         return table
 
-    def _tokens_that_prefix(self, str):
-        return [entry for entry in self.table if str.startswith(entry.string)]
+    def _tokens_that_prefix(self, s: str):
+        return [entry for entry in self.table if s.startswith(entry.string)]
 
     # TODO: this approach is very simple and slow - better to use a trie or similar.
-    def _find_matches(self, str):
-        result = []
+    def _find_matches(self, str: str) -> list[IdAndString]:
+        result: list[IdAndString] = []
         while len(str) > 0:
             m = self._tokens_that_prefix(str)
             m.sort(key=lambda x: x.string, reverse=True)
             if len(m) == 0:
-                print("ERROR: no match for \"" + str + "\"")
-                return
+                raise ValueError("ERROR: no match for \"" + str + "\"")
             else:
                 result.append(m[0])
             str = str[len(m[0].string):]
         return result
 
-    def encode(self, str, max, fill=True, start=True, end=False) -> list[int]:
+    def encode(self, str: str, max: int, fill: bool=True, start: bool=True, end: bool=False) -> list[int]:
         matches = self.simple_encode(str)
         if start:
             matches.insert(0, self.start.id)
@@ -94,7 +93,7 @@ class BPE:
                 matches.extend([self.padding.id] * (max - len(matches)))
         return matches
 
-    def simple_encode(self, str) -> list[int]:
+    def simple_encode(self, str: str) -> list[int]:
         matches = self._find_matches(str)
         return [m.id for m in matches]
 
@@ -106,8 +105,8 @@ class BPE:
         for s in self.specials:
             self._specialCache[s.id] = s
 
-    def _process_bases(self, pairs):
-        result = []
+    def _process_bases(self, pairs: list[list[int]]):
+        result: list[Base] = []
         for pair in pairs:
             assert len(pair) == 2
             id = pair[1]
@@ -115,27 +114,27 @@ class BPE:
             result.append(Base(id, char))
         return result
 
-    def _process_rules(self, triplets):
-        result = []
+    def _process_rules(self, triplets: list[list[int]]):
+        result: list[Rule] = []
         for t in triplets:
             assert len(t) == 3
             result.append(Rule(t[0], t[1], t[2]))
         return result
     
-    def _process_specials(self, last_line):
+    def _process_specials(self, last_line: list[int]):
         self.unknown = Special(last_line[0], "<|UNKNOWN|>")
         self.padding = Special(last_line[1], "<|PADDING|>")
         self.start = Special(last_line[2], "<|START|>")
         self.end = Special(last_line[3], "<|END|>")
         self.specials = [self.unknown, self.padding, self.start, self.end]
 
-    def find_base(self, id):
+    def find_base(self, id: int) -> Base | None :
         return self._baseCache.get(id)
-    def find_rule(self, id):
+    def find_rule(self, id: int) -> Rule | None:
         return self._ruleCache.get(id)
-    def find_special(self, id):
+    def find_special(self, id: int) -> Special | None:
         return self._specialCache.get(id)
-    def find(self, id):
+    def find(self, id: int) -> None|Base|Special|Rule:
         result = self.find_base(id)
         if result is not None:
             return result
@@ -144,25 +143,25 @@ class BPE:
             return result
         return self.find_rule(id)
 
-    def decode_token(self, id: int):
+    def decode_token(self, id: int) -> str:
         result = self.find(id)
         assert(result is not None)
         if isinstance(result, Base):
             return chr(result.char) + ""
         if isinstance(result, Rule):
             return self.decode_token(result.a) + self.decode_token(result.b)
-        if isinstance(result, Special):
+        if isinstance(result, Special): # type: ?
             return result.desc
         assert False, "result was " + str(result)
 
-    def decode(self, list):
+    def decode(self, list: list[int]) -> str:
         return ''.join(self.decode_token(t) for t in list)
 
-    def _read_lines(self, filename):
-        all_numbers = []
+    def _read_lines(self, filename: str):
+        all_numbers: list[list[int]] = []
         with open(filename, 'r') as file:
             for line in file:
                 number_strings = line.strip().split()
-                numbers = [int(num) for num in number_strings]
+                numbers: list[int] = [int(num) for num in number_strings]
                 all_numbers.append(numbers)
         return all_numbers

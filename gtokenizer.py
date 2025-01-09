@@ -74,3 +74,4 @@ class GTokenizer:
         )
 
         return GTokenizer(model, gtokens, specials)
+
