@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass, field
-from tokens import Base, Rule, Special, Specials, GToken, IdAndString, AToken
+from tokens import Rule, Special, Specials, GToken, IdAndString, AToken
 from abc import abstractmethod
 
 #pyright: strict
@@ -13,9 +13,8 @@ class BPEReader:
 
 @dataclass
 class BPE:
-    bases: list[Base] = field(default_factory=list)
-    rules: list[Rule] = field(default_factory=list)
     gtokens: list[GToken] = field(default_factory=list)
+    rules: list[Rule] = field(default_factory=list)
     vocab_size: int = 0
 
     def __post_init__(self):
@@ -23,11 +22,12 @@ class BPE:
 
     def read(self, reader: BPEReader):
         (input, specials, vocab_size) = reader.read()
-        self.bases = [t for t in input if isinstance(t, Base)]
-        self.rules = [t for t in input if isinstance(t, Rule)]
         self.gtokens = [t for t in input if isinstance(t, GToken)]
-        for i in range(10):
-            print(input[i])
+        self.rules = [t for t in input if isinstance(t, Rule)]
+        for i in range(300):
+            xxx = input[i]
+            if isinstance(xxx, GToken):
+                print(xxx.type, xxx.str, xxx.str[0])
         self.specials = specials
         self.vocab_size = vocab_size
         self._fill_index()
@@ -76,8 +76,6 @@ class BPE:
         return [m.id for m in matches]
 
     def _fill_index(self):
-        for base in self.bases:
-            self._cache[base.id] = base
         for rule in self.rules:
             self._cache[rule.c] = rule
         for special in self.specials.all():
@@ -91,8 +89,6 @@ class BPE:
     def decode_token(self, id: int) -> str:
         result = self.find(id)
         assert(result is not None)
-        if isinstance(result, Base):
-            return chr(result.char) + ""
         if isinstance(result, Rule):
             return self.decode_token(result.a) + self.decode_token(result.b)
         if isinstance(result, Special):

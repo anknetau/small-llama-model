@@ -1,4 +1,4 @@
-from tokens import Base, Rule, Special, Specials, AToken
+from tokens import GToken, Rule, Special, Specials, AToken, GTType
 
 #pyright: strict
 
@@ -27,12 +27,12 @@ def read_numeric_lines(filename: str):
     return all_numbers
 
 def process_bases(pairs: list[list[int]]):
-    result: list[Base] = []
+    result: list[GToken] = []
     for pair in pairs:
         assert len(pair) == 2
         id = pair[1]
         char = pair[0]
-        result.append(Base(id, char))
+        result.append(GToken(id, chr(char), 0, GTType.NORMAL))
     return result
 
 def process_rules(triplets: list[list[int]]):

@@ -1,6 +1,6 @@
 #pyright: strict
 
-from tokens import Special, Specials, GToken, GTType
+from tokens import Special, Specials, GToken, GTType, AToken
 from model import Model
 from typing import Any, Callable
 
@@ -24,7 +24,7 @@ def read(model: Model):
     assert(len(tokens) == len(scores) == len(token_types))
 
     makeToken: Callable[[int], GToken] = lambda i: GToken(i, tokens[i], scores[i], GTType.make(token_types[i]))
-    gtokens = [makeToken(i) for i in range(len(tokens))]
+    gtokens: list[AToken] = [makeToken(i) for i in range(len(tokens))]
     makeSpecial: Callable[[GToken], Special] = lambda gtoken: Special(gtoken.id, gtoken.str)
 
     unknown = makeSpecial(gtokens[info_int("unknown_token_id")])

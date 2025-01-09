@@ -3,13 +3,14 @@
 import unittest
 from bpe import BPE
 from constants import Constants
+import a
 
 #pyright: strict
 
 class TestTokens(unittest.TestCase):
     def setUp(self):
         self.bpe = BPE()
-        self.bpe.read_numeric_text_format(Constants.BPE_FLCC_CS)
+        self.bpe.read(a.NumericLinesReader(Constants.BPE_FLCC_CS))
 
     def test_bpe(self):
         bpe = self.bpe

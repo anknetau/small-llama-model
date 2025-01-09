@@ -4,7 +4,7 @@ from typing import TypeAlias
 
 #pyright: strict
 
-AToken: TypeAlias = "Base | Rule | GToken | Special"
+AToken: TypeAlias = "Rule | GToken | Special"
 
 # A GGUF token
 @dataclass
@@ -13,14 +13,6 @@ class GToken:
     str: str
     score: float
     type: 'GTType'
-
-# A character with an ID associated with it
-@dataclass
-class Base:
-    id: int
-    char: int
-    def __str__(self):
-        return f"{self.id}='{self.char}'"
 
 # A special token
 @dataclass
