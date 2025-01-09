@@ -12,7 +12,7 @@ from constants import Constants
 
 import numpy as np
 from numpy import ndarray
-
+from util import silu, softmax_last
 
 # Config
 from typing import Optional
@@ -160,7 +160,7 @@ def calc_attention(block: Block, x: ndarray, start_pos: int, mask: Optional[ndar
     # `mask` is used only once at the beginning.
     if mask is not None:
         attention = attention + mask[None, None, :, :]
-    attention = softmax(attention)
+    attention = softmax_last(attention)
     output: ndarray = attention @ xv
 
     # ["B, HN, L or 1, HD"] -> ["B, L or 1, D"]
@@ -272,7 +272,7 @@ def start():
     print(model.detailed_description())
 
     bpe = BPE()
-    bpe.read(Constants.BPE_FLCC_CS)
+    bpe.read(Constants.FLCC_CS_BPE)
 
     llama = Llama(model, bpe)
 
@@ -307,16 +307,6 @@ class Foo
 
     elapsed = time.time() - start
     print(f"\n\nToken count: {L}, elapsed: {elapsed:.2f}s, {round(L / elapsed)} tokens/s")
-
-
-# Small functions
-
-def softmax(x):
-    exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
-    return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
-
-def silu(x):
-    return x * (1 / (1 + np.exp(-x)))
 
 if __name__ == '__main__':
     start()

@@ -6,12 +6,12 @@ from constants import Constants
 
 #pyright: strict
 
-class TestExample(unittest.TestCase):
+class TestTokens(unittest.TestCase):
     def setUp(self):
         self.bpe = BPE()
         self.bpe.read(Constants.BPE_FLCC_CS)
 
-    def test_something(self):
+    def test_bpe(self):
         bpe = self.bpe
         self.assertEqual(bpe.start.id, 2)
         self.assertEqual(bpe.end.id, 3)

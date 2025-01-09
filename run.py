@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
 from constants import Constants
-import gguf
 from model import Model
 from bpe import BPE
 
-# ----
-
 from gtokenizer import GTokenizer
 
+#pyright: strict
 
 # tokenizer.ggml.model 'llama'
 # tokenizer.ggml.pre 'default'

@@ -1,5 +1,7 @@
 # Taken from https://github.com/99991/pygguf/blob/main/LICENSE
 
+# Some copyright (c) 2025-, modifications by Andres Kievsky
+
 # MIT License
 
 # Copyright (c) 2023-2024 The ggml authors
@@ -28,6 +30,8 @@
 import struct
 import warnings
 import numpy as np
+import io
+from typing import Any, TypeAlias
 
 GGML_TYPES = {
     "F32": 0,
@@ -128,7 +132,7 @@ def read_value(f, data_type):
     else:
         raise NotImplementedError(f"Data type {data_type} not implemented")
 
-def load_gguf(f):
+def load_gguf(f: io.BufferedReader) -> tuple[dict[str, Any], dict[str, Any]]:
     f.seek(0)
     assert f.read(4) == b"GGUF"
     values = struct.unpack("<IQQ", f.read(4+8+8))
@@ -445,7 +449,7 @@ GGML_DEQUANTIZE = {
     "Q6_K": dequantize_q6_k,
 }
 
-def load_gguf_tensor(f, tensorinfo, name):
+def load_gguf_tensor(f: io.BufferedReader, tensorinfo: dict[str, Any], name: str):
     t = tensorinfo[name]
 
     offset = t["offset"]
