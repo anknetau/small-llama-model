@@ -153,6 +153,7 @@ def load_gguf(f: io.BufferedReader) -> tuple[dict[str, Any], dict[str, Any]]:
         name = read_value(f, DATA_TYPES["string"])
         shape_len = read_value(f, DATA_TYPES["uint32"])
         shape = [read_value(f, DATA_TYPES["uint64"]) for _ in range(shape_len)]
+        # print("...", name, shape_len, shape)
         ggml_type = read_value(f, DATA_TYPES["uint32"])
         bad_offset = read_value(f, DATA_TYPES["uint64"])
 
@@ -454,6 +455,8 @@ def load_gguf_tensor(f: io.BufferedReader, tensorinfo: dict[str, Any], name: str
 
     offset = t["offset"]
     shape = t["shape"]
+    # print(shape)
+    # assert(False)
     ggml_type = t["ggml_type"]
 
     if ggml_type not in GGML_NAMES:

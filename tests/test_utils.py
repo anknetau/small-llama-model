@@ -16,7 +16,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(output[0], expected[0]) # has to be 0
 
     def test_softmax(self):
-        input = np.array([[1, 1, 1, 1], [0, 0, 0, 0]])        
+        input = np.array([[1, 1, 1, 1], [0, 0, 0, 0]])
         exp = np.array([[0.25, 0.25, 0.25, 0.25], [0.25, 0.25, 0.25, 0.25]])
         np.testing.assert_array_almost_equal(softmax_last(input), exp)
         k1 = np.e/(4*np.e+4)

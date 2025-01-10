@@ -9,6 +9,8 @@ from typing import TypeVar, Generic, Optional
 from model import Model, Block
 from bpe import BPE
 from constants import Constants
+from checks import assert_check_model
+import token_reader_impl
 
 import numpy as np
 from numpy import ndarray
@@ -46,9 +48,9 @@ class ModelArgs:
 # llama.rope.freq_base 10000.0
 # general.quantization_version 2
 
-DIM = 1024 # who knows!
-MAX_SEQ_LEN = 1024
-MAX_BATCH_SIZE = 1 # ? don't ask me, i just work here!
+# DIM = -1 # who knows! 1024/512 seemed to work.
+# MAX_SEQ_LEN = 1024
+# MAX_BATCH_SIZE = 1 # ? don't ask me, i just work here!
 
 def compute_cos_sin_cache(head_dim: int, max_seq_len: int, base: int = 10000):
     inv_freq: ndarray = 1.0 / (base ** (np.arange(0, head_dim, 2)[: (head_dim // 2)] / head_dim))
@@ -108,12 +110,15 @@ def rms_norm(weight: ndarray, eps: float, x: ndarray):
     z: ndarray = x / np.sqrt(z)
     return z * weight
 
-def calc_attention(block: Block, x: ndarray, start_pos: int, mask: Optional[ndarray], freqs_cos: ndarray, freqs_sin: ndarray, model):
+def calc_attention(block: Block, x: ndarray, start_pos: int, mask: Optional[ndarray],
+                   freqs_cos: ndarray, freqs_sin: ndarray, model: Model):
     n_kv_heads = model.n_heads # head_count_kv ? who knows!
     # assert args.n_heads % self.n_kv_heads == 0
     n_local_heads = model.n_heads
     n_local_kv_heads = n_kv_heads
     n_rep = n_local_heads // n_local_kv_heads
+    
+    DIM = model.embedding_length
     head_dim = DIM // model.n_heads # llama.rope.dimension_count ? is 128
 
     q_weight: ndarray = block.attn_q.weight.T
@@ -122,6 +127,8 @@ def calc_attention(block: Block, x: ndarray, start_pos: int, mask: Optional[ndar
     o_weight: ndarray = block.attn_output.weight.T
 
     # 1, 1024, 8, 128
+    MAX_BATCH_SIZE = 1
+    MAX_SEQ_LEN = model.embedding_length
     cache_k = np.zeros((MAX_BATCH_SIZE, MAX_SEQ_LEN, n_local_kv_heads, head_dim))
     cache_v = np.zeros((MAX_BATCH_SIZE, MAX_SEQ_LEN, n_local_kv_heads, head_dim))
 
@@ -201,6 +208,8 @@ class Llama:
         self.tok_embedding: ndarray = model.token_embd.weight
 
         # RoPE #1
+        DIM = model.embedding_length
+        MAX_SEQ_LEN = model.embedding_length
         self.freqs_cos, self.freqs_sin = compute_cos_sin_cache(DIM // model.n_heads, MAX_SEQ_LEN)
 
         # self.norm = RMSNorm(model.output_norm.weight, eps=model.eps) # weight.get("model.norm.weight"), eps=model.eps)
@@ -266,16 +275,37 @@ class Llama:
             next_id = logits[:, -1, :].argmax(-1, keepdims=True)
             yield next_id
 
-def start():
-    model = Model.load(Constants.MODEL_FLCC_CS)
-    # model.fix()
-    print(model.detailed_description())
+def load_llama():
+    print("Llama")
+    llama_model = Model.load(Constants.MODEL_LLAMA_39)
+    assert_check_model(llama_model)
 
     bpe = BPE()
-    bpe.read_numeric_text_format(Constants.BPE_FLCC_CS)
+    bpe.read(token_reader_impl.GGUFReader(llama_model))
+    assert(bpe.vocab_size == 32000 == len(bpe.gtokens))
 
-    llama = Llama(model, bpe)
+    prompt = "Hello, my name is "
+    # print(llama_model.detailed_description())
+    #
+    # str = "Hello "
+    # tokens = bpe.encode(str, llama_model.embedding_length, fill=False, start=True, end=False)
+    #
+    # str2 = bpe.decode(tokens)
+    # print("tokens:", tokens, str2.encode())
+    #
+    # result = llama_model.run_pass(tokens)
+    #
+    # print("result:", bpe.decode_token(result))
+    return llama_model, bpe, prompt
 
+
+def load_flcc():
+    flcc_model = Model.load(Constants.MODEL_FLCC_CS)
+    assert_check_model(flcc_model)
+    print(flcc_model.detailed_description())
+
+    bpe = BPE()
+    bpe.read(token_reader_impl.NumericLinesReader(Constants.BPE_FLCC_CS))
     prompt = """
 class Foo
 {
@@ -284,6 +314,11 @@ class Foo
         bool x = """
 
     # prompt = "bool x = "
+    return flcc_model, bpe, prompt
+
+def start():
+    model, bpe, prompt = load_llama()
+    llama = Llama(model, bpe)    
 
     start = time.time()
     tokens = bpe.encode(prompt, model.embedding_length, fill=False, start=True, end=False)

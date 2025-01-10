@@ -5,6 +5,7 @@ from model import Model
 from bpe import BPE
 from checks import assert_check_model
 import token_reader_impl
+from util import SomeNPArray
 
 #pyright: strict
 
@@ -72,6 +73,18 @@ def check_llama():
     result = llama_model.run_pass(tokens)
 
     print("result:", bpe.decode_token(result))
+    # for tensor in llama_model.all_tensors():
+    #     print(dump_tensor_slice(tensor.weight, tensor.name))
+
+
+def dump_tensor_slice(tensor: SomeNPArray, name: str, start: int|None=None, end:int|None=None) -> str:
+    start = start or (0,) * tensor.ndim # type: ignore
+    end = end or tuple(min(dim, 10) for dim in tensor.shape)  # Default to the first 10 elements of each dimension # type: ignore
+    slices = tuple(slice(s, e) for s, e in zip(start, end)) # type: ignore
+    sliced_tensor = tensor[slices]
+    # print(f"Shape: {tensor.shape}, Sliced Shape: {sliced_tensor.shape}")
+    # print(f"Values:\n{sliced_tensor}")
+    return "\n>>> {" + name + "@" + str(tensor.shape) + "/" + str(sliced_tensor).replace("\n", "") + "}\n\n"
 
 
 def start():
