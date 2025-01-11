@@ -24,11 +24,13 @@ class Foo
 
 def check_flcc():
     print("FLCC")
-    flcc_model = Model.load(Constants.MODEL_FLCC_CS)
+    with open(Constants.MODEL_FLCC_CS, "rb") as reader:
+        flcc_model = Model.load(reader)
     assert_check_model(flcc_model)
 
     bpe = BPE()
-    bpe.read(token_reader_impl.NumericLinesReader(Constants.BPE_FLCC_CS))
+    with open(Constants.BPE_FLCC_CS, 'r') as reader:
+        bpe.read(token_reader_impl.NumericLinesReader(reader))
     # Some sanity checking
     assert(bpe.specials.start.id == 2)
     assert(bpe.specials.end.id == 3)
@@ -53,7 +55,8 @@ def check_flcc():
 
 def check_llama():
     print("Llama")
-    llama_model = Model.load(Constants.MODEL_LLAMA_39)
+    with open(Constants.MODEL_LLAMA_39, "rb") as reader:
+        llama_model = Model.load(reader)
     assert_check_model(llama_model)
 
     bpe = BPE()

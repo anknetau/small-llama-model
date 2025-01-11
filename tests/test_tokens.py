@@ -9,7 +9,8 @@ from small_llama_model.tokens import token_reader_impl
 class TestTokens(unittest.TestCase):
     def setUp(self):
         self.bpe = BPE()
-        self.bpe.read(token_reader_impl.NumericLinesReader(Constants.BPE_FLCC_CS))
+        with open(Constants.BPE_FLCC_CS, 'r') as reader:
+            self.bpe.read(token_reader_impl.NumericLinesReader(reader))
 
     def test_bpe(self):
         bpe = self.bpe

@@ -242,7 +242,8 @@ class Llama:
 
 def load_llama():
     print("Llama")
-    llama_model = Model.load(Constants.MODEL_LLAMA_39)
+    with open(Constants.MODEL_LLAMA_39, "rb") as reader:
+        llama_model = Model.load(reader)
     assert_check_model(llama_model)
 
     bpe = BPE()
@@ -265,7 +266,8 @@ def load_llama():
 
 
 def load_flcc():
-    flcc_model = Model.load(Constants.MODEL_FLCC_CS)
+    with open(Constants.MODEL_FLCC_CS, "rb") as reader:
+        flcc_model = Model.load(reader)
     assert_check_model(flcc_model)
     print(flcc_model.detailed_description())
 

@@ -1,9 +1,10 @@
 #pyright: strict
 
 from tokens.tokens import GToken, Rule, Special, Specials, AToken, GTType
+from utils.common import *
 
-def read(filename: str) -> tuple[list[AToken], Specials, int]:
-    numbers = read_numeric_lines(filename)
+def read(reader: TextIOBase) -> tuple[list[AToken], Specials, int]:
+    numbers = read_numeric_lines(reader)
     base_count = numbers[0][0]
     rules_count = numbers[0][1]
     bases = process_bases(numbers[1:base_count+1])
@@ -17,13 +18,12 @@ def read(filename: str) -> tuple[list[AToken], Specials, int]:
     all.extend(rules)
     return (all, specials, vocab_size)
 
-def read_numeric_lines(filename: str):
+def read_numeric_lines(reader: TextIOBase):
     all_numbers: list[list[int]] = []
-    with open(filename, 'r') as file:
-        for line in file:
-            number_strings = line.strip().split()
-            numbers: list[int] = [int(num) for num in number_strings]
-            all_numbers.append(numbers)
+    for line in reader:
+        number_strings = line.strip().split()
+        numbers: list[int] = [int(num) for num in number_strings]
+        all_numbers.append(numbers)
     return all_numbers
 
 def process_bases(pairs: list[list[int]]):

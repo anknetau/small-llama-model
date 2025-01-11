@@ -7,5 +7,7 @@ from typing import TypeVar, Generic, Optional, Callable
 from dataclasses import dataclass, field
 from abc import abstractmethod
 from enum import Enum
+from io import BufferedReader, TextIOBase
 
-__all__ = ["np", "Any", "TypeAlias", "dataclass", "TypeVar", "Generic", "Optional", "abstractmethod", "field", "Callable", "Enum"]
+__all__ = ["np", "Any", "TypeAlias", "dataclass", "TypeVar", "Generic", "Optional", "abstractmethod",
+           "field", "Callable", "Enum", "BufferedReader", "TextIOBase"]

@@ -3,7 +3,6 @@
 import third.pygguf as pygguf
 import math
 from utils.common import *
-
 from utils.utils import SomeNPArray, silu, softmax_all, apply_temp
 
 @dataclass
@@ -59,32 +58,31 @@ class Model:
     name: str
     
     @staticmethod
-    def load(filename: str) -> 'Model':
-        with open(filename, "rb") as f:
-            info, tensorinfo = pygguf.load_gguf(f)
+    def load(reader: BufferedReader) -> 'Model':
+        info, tensorinfo = pygguf.load_gguf(reader)
 
-            tensors: list[Tensor] = []
+        tensors: list[Tensor] = []
 
-            for name in tensorinfo:
-                weight = pygguf.load_gguf_tensor(f, tensorinfo, name)
-                tensor = Tensor(name, weight)
-                tensors.append(tensor)
+        for name in tensorinfo:
+            weight = pygguf.load_gguf_tensor(reader, tensorinfo, name)
+            tensor = Tensor(name, weight)
+            tensors.append(tensor)
 
-            dictionary: dict[str, Tensor] = {tensor.name: tensor for tensor in tensors}
-            bc = info["llama.block_count"]
+        dictionary: dict[str, Tensor] = {tensor.name: tensor for tensor in tensors}
+        bc = info["llama.block_count"]
 
-            return Model(
-                token_embd = dictionary["token_embd.weight"],
-                output = dictionary["output.weight"],
-                output_norm = dictionary["output_norm.weight"],
-                blocks = [Block.make(dictionary, i) for i in range(bc)],
-                info = info,
-                block_count = bc,
-                embedding_length = info["llama.embedding_length"],
-                n_heads = info["llama.attention.head_count"],
-                eps = info["llama.attention.layer_norm_rms_epsilon"],
-                name = info["general.name"]
-            )
+        return Model(
+            token_embd = dictionary["token_embd.weight"],
+            output = dictionary["output.weight"],
+            output_norm = dictionary["output_norm.weight"],
+            blocks = [Block.make(dictionary, i) for i in range(bc)],
+            info = info,
+            block_count = bc,
+            embedding_length = info["llama.embedding_length"],
+            n_heads = info["llama.attention.head_count"],
+            eps = info["llama.attention.layer_norm_rms_epsilon"],
+            name = info["general.name"]
+        )
 
     def all_tensors(self):
         result = [self.token_embd, self.output, self.output_norm]
