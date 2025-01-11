@@ -6,52 +6,16 @@ from __future__ import annotations
 import math
 import sys
 import time
-from typing import TypeVar, Generic, Optional
 from core.model import Model, Block
 from core.constants import Constants
 from tokens.bpe import BPE
-from utils.checks import assert_check_model
 import tokens.token_reader_impl as token_reader_impl
 
-import numpy as np
+from utils.common import *
+from utils.checks import assert_check_model
 from numpy import ndarray
+
 from utils import silu, softmax_last
-
-# Config
-from typing import Optional
-from dataclasses import dataclass
-
-@dataclass
-class ModelArgs:
-    # Model params for ./stories15M.model.npz
-    dim: int                    = 288       # D
-    n_layers: int               = 6
-    n_heads: int                = 6         # QHN, HN, HD = 48
-    n_kv_heads: Optional[int]   = None      # KVHN = 6
-    vocab_size: int             = 32000     # VS
-    max_seq_len: int            = 256       # M
-    max_new_tokens: int         = 50
-    norm_eps: float             = 1e-6
-    max_batch_size: int         = 1
-# /config
-
-# Info:
-# general.size_label '111M'
-# llama.vocab_size 16384
-# llama.context_length 1536
-# llama.embedding_length 1024
-# llama.block_count 6
-# llama.feed_forward_length 2816
-# llama.rope.dimension_count 128
-# llama.attention.head_count 8
-# llama.attention.head_count_kv 8
-# llama.attention.layer_norm_rms_epsilon 9.999999974752427e-07
-# llama.rope.freq_base 10000.0
-# general.quantization_version 2
-
-# DIM = -1 # who knows! 1024/512 seemed to work.
-# MAX_SEQ_LEN = 1024
-# MAX_BATCH_SIZE = 1 # ? don't ask me, i just work here!
 
 def compute_cos_sin_cache(head_dim: int, max_seq_len: int, base: int = 10000):
     inv_freq: ndarray = 1.0 / (base ** (np.arange(0, head_dim, 2)[: (head_dim // 2)] / head_dim))

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
-import unittest
-from small_llama_model.tokens.bpe import BPE
-from small_llama_model.core.constants import Constants
-from small_llama_model.tokens import token_reader_impl
-
 #pyright: strict
+
+import unittest
+from small_llama_model import BPE, Constants
+from small_llama_model.tokens import token_reader_impl
 
 class TestTokens(unittest.TestCase):
     def setUp(self):

@@ -2,7 +2,7 @@
 
 from tokens.tokens import Special, Specials, GToken, GTType, AToken
 from core.model import Model
-from typing import Any, Callable
+from utils.common import *
 
 # This file implements the GGML tokeniser within GGUF
 

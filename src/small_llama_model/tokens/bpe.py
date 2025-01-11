@@ -1,7 +1,6 @@
 #pyright: strict
 
-from dataclasses import dataclass, field
-from abc import abstractmethod
+from utils.common import *
 from tokens.tokens import Rule, Special, Specials, GToken, IdAndString, AToken, GTType
 
 class BPEReader:

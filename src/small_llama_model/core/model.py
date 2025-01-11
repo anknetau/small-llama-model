@@ -1,10 +1,8 @@
 #pyright: strict
 
-from dataclasses import dataclass
 import third.pygguf as pygguf
-import numpy as np
 import math
-from typing import Any
+from utils.common import *
 
 from utils.utils import SomeNPArray, silu, softmax_all, apply_temp
 
