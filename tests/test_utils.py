@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
-from small_llama_model.util import silu, softmax_all, softmax_last
+from small_llama_model.utils.utils import silu, softmax_all, softmax_last
 import numpy as np
 
 #pyright: strict

@@ -1,4 +1,4 @@
-from tokens import GToken, Rule, Special, Specials, AToken, GTType
+from tokens.tokens import GToken, Rule, Special, Specials, AToken, GTType
 
 #pyright: strict
 

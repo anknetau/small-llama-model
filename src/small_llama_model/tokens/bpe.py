@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass, field
-from tokens import Rule, Special, Specials, GToken, IdAndString, AToken, GTType
 from abc import abstractmethod
+from tokens.tokens import Rule, Special, Specials, GToken, IdAndString, AToken, GTType
 
 #pyright: strict
 

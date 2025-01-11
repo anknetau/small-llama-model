@@ -1,4 +1,4 @@
-from model import Model
+from core.model import Model
 
 #pyright: strict
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass
-import gguf
+import third.pygguf as pygguf
 import numpy as np
 import math
 from typing import Any
 
-from util import SomeNPArray, silu, softmax_all, apply_temp
+from utils.utils import SomeNPArray, silu, softmax_all, apply_temp
 
 #pyright: strict
 
@@ -65,12 +65,12 @@ class Model:
     @staticmethod
     def load(filename: str) -> 'Model':
         with open(filename, "rb") as f:
-            info, tensorinfo = gguf.load_gguf(f)
+            info, tensorinfo = pygguf.load_gguf(f)
 
             tensors: list[Tensor] = []
 
             for name in tensorinfo:
-                weight = gguf.load_gguf_tensor(f, tensorinfo, name)
+                weight = pygguf.load_gguf_tensor(f, tensorinfo, name)
                 tensor = Tensor(name, weight)
                 tensors.append(tensor)
 

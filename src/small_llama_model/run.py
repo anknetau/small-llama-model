@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from constants import Constants
-from model import Model
-from bpe import BPE
-from checks import assert_check_model
-import token_reader_impl
-from util import SomeNPArray
+from core.constants import Constants
+from core.model import Model
+from tokens.bpe import BPE
+import tokens.token_reader_impl as token_reader_impl
+from utils.checks import assert_check_model
+from utils.utils import SomeNPArray
 
 #pyright: strict
 

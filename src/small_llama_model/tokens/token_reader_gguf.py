@@ -1,7 +1,7 @@
 #pyright: strict
 
-from tokens import Special, Specials, GToken, GTType, AToken
-from model import Model
+from tokens.tokens import Special, Specials, GToken, GTType, AToken
+from core.model import Model
 from typing import Any, Callable
 
 # This file implements the GGML tokeniser within GGUF

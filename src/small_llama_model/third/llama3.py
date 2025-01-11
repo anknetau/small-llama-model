@@ -6,15 +6,15 @@ import math
 import sys
 import time
 from typing import TypeVar, Generic, Optional
-from model import Model, Block
-from bpe import BPE
-from constants import Constants
-from checks import assert_check_model
-import token_reader_impl
+from core.model import Model, Block
+from core.constants import Constants
+from tokens.bpe import BPE
+from utils.checks import assert_check_model
+import tokens.token_reader_impl as token_reader_impl
 
 import numpy as np
 from numpy import ndarray
-from util import silu, softmax_last
+from utils import silu, softmax_last
 
 # Config
 from typing import Optional
