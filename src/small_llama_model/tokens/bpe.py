@@ -1,10 +1,8 @@
-#!/usr/bin/env python3
+#pyright: strict
 
 from dataclasses import dataclass, field
 from abc import abstractmethod
 from tokens.tokens import Rule, Special, Specials, GToken, IdAndString, AToken, GTType
-
-#pyright: strict
 
 class BPEReader:
     @abstractmethod

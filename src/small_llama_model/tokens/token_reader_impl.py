@@ -1,11 +1,10 @@
+#pyright: strict
+
 from tokens.bpe import BPEReader
 from core.model import Model
 import tokens.token_reader_numeric_lines
 import tokens.token_reader_gguf
 from tokens.tokens import Specials, AToken
-
-#pyright: strict
-
 
 class NumericLinesReader(BPEReader):
     def __init__(self, filename: str):

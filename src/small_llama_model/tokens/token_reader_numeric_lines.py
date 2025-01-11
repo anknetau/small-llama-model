@@ -1,6 +1,6 @@
-from tokens.tokens import GToken, Rule, Special, Specials, AToken, GTType
-
 #pyright: strict
+
+from tokens.tokens import GToken, Rule, Special, Specials, AToken, GTType
 
 def read(filename: str) -> tuple[list[AToken], Specials, int]:
     numbers = read_numeric_lines(filename)

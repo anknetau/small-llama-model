@@ -1,5 +1,4 @@
 # Taken from https://github.com/99991/pygguf/blob/main/LICENSE
-
 # Some copyright (c) 2025-, modifications by Andres Kievsky
 
 # MIT License

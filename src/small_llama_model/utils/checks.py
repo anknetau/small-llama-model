@@ -1,6 +1,6 @@
-from core.model import Model
-
 #pyright: strict
+
+from core.model import Model
 
 def assert_check_model(model: Model):
     # Just some sanity checking

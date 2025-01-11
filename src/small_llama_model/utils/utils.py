@@ -1,7 +1,7 @@
+#pyright: strict
+
 import numpy as np
 from typing import Any, TypeAlias
-
-#pyright: strict
 
 SomeNPArray: TypeAlias = np.ndarray[Any, Any]
 

@@ -1,4 +1,5 @@
 # From https://github.com/likejazz/llama3.np/blob/main/llama3.py (MIT license)
+# Some copyright (c) 2025-, modifications by Andres Kievsky
 
 from __future__ import annotations
 

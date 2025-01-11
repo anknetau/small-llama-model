@@ -1,8 +1,8 @@
+#pyright: strict
+
 from dataclasses import dataclass
 from enum import Enum
 from typing import TypeAlias
-
-#pyright: strict
 
 AToken: TypeAlias = "Rule | GToken | Special"
 

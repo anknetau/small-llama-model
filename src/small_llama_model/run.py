@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#pyright: strict
 
 from core.constants import Constants
 from core.model import Model
@@ -6,9 +7,6 @@ from tokens.bpe import BPE
 import tokens.token_reader_impl as token_reader_impl
 from utils.checks import assert_check_model
 from utils.utils import SomeNPArray
-
-#pyright: strict
-
 
 def sample_input():
     str = "if (token.Type != TokenType.Number && token.Type != TokenType.String)"

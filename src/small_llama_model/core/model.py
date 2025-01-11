@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#pyright: strict
 
 from dataclasses import dataclass
 import third.pygguf as pygguf
@@ -7,8 +7,6 @@ import math
 from typing import Any
 
 from utils.utils import SomeNPArray, silu, softmax_all, apply_temp
-
-#pyright: strict
 
 @dataclass
 class Tensor:
