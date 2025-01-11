@@ -4,18 +4,14 @@
 from __future__ import annotations
 
 import math
-import sys
-import time
 from core.model import Model, Block
-from core.constants import Constants
 from tokens.bpe import BPE
-import tokens.token_reader_impl as token_reader_impl
+
+from numpy import ndarray
 
 from utils.common import *
 from utils.checks import assert_check_model
-from numpy import ndarray
-
-from utils import silu, softmax_last
+from utils.utils import silu, softmax_last, print_single
 
 def compute_cos_sin_cache(head_dim: int, max_seq_len: int, base: int = 10000):
     inv_freq: ndarray = 1.0 / (base ** (np.arange(0, head_dim, 2)[: (head_dim // 2)] / head_dim))
@@ -165,7 +161,7 @@ def tranformer_calc(block: Block, x: ndarray, start_pos: int, mask: ndarray,
     return out
 
 
-class Llama:
+class LlamaThirdParty:
     def __init__(self, model: Model, bpe: BPE):
         self.model = model
         self.bpe = bpe
@@ -227,7 +223,20 @@ class Llama:
         next_id = logits[:, -1, :].argmax(-1, keepdims=True)
         return next_id
 
-    def generate_old(self, input_ids: ndarray, max_new_tokens: int):
+    def run_pass(self, tokens: list[int], bpe: BPE):
+        input_ids = np.array([tokens])
+        _, l = input_ids.shape
+
+        MAX_NEW_TOKENS = 100
+        for id in self.generate_old(input_ids, MAX_NEW_TOKENS):
+            print(id)
+            l += 1
+            output_id = id[0].tolist()
+            if output_id[-1] in [bpe.specials.end.id, bpe.specials.start.id]:
+                break
+            print_single(bpe.decode_token(output_id[-1]))
+
+    def generate_old(self, input_ids: ndarray[Any, Any], max_new_tokens: int) -> Generator[ndarray[Any, Any], None, None]:
         _, L = input_ids.shape
         for i, curr_pos in enumerate(range(L, max_new_tokens)):
             if i == 0:  # Prefill Phase
@@ -239,76 +248,3 @@ class Llama:
             logits: ndarray = self.calc(inputs, pos)
             next_id = logits[:, -1, :].argmax(-1, keepdims=True)
             yield next_id
-
-def load_llama():
-    print("Llama")
-    with open(Constants.MODEL_LLAMA_39, "rb") as reader:
-        llama_model = Model.load(reader)
-    assert_check_model(llama_model)
-
-    bpe = BPE()
-    bpe.read(token_reader_impl.GGUFReader(llama_model))
-    assert(bpe.vocab_size == 32000 == len(bpe.gtokens))
-
-    prompt = "Hello, my name is "
-    # print(llama_model.detailed_description())
-    #
-    # str = "Hello "
-    # tokens = bpe.encode(str, llama_model.embedding_length, fill=False, start=True, end=False)
-    #
-    # str2 = bpe.decode(tokens)
-    # print("tokens:", tokens, str2.encode())
-    #
-    # result = llama_model.run_pass(tokens)
-    #
-    # print("result:", bpe.decode_token(result))
-    return llama_model, bpe, prompt
-
-
-def load_flcc():
-    with open(Constants.MODEL_FLCC_CS, "rb") as reader:
-        flcc_model = Model.load(reader)
-    assert_check_model(flcc_model)
-    print(flcc_model.detailed_description())
-
-    bpe = BPE()
-    bpe.read(token_reader_impl.NumericLinesReader(Constants.BPE_FLCC_CS))
-    prompt = """
-class Foo
-{
-    void Main()
-    {
-        bool x = """
-
-    # prompt = "bool x = "
-    return flcc_model, bpe, prompt
-
-def start():
-    model, bpe, prompt = load_llama()
-    llama = Llama(model, bpe)    
-
-    start = time.time()
-    tokens = bpe.encode(prompt, model.embedding_length, fill=False, start=True, end=False)
-    print(prompt)
-
-    input_ids = np.array([tokens])
-    _, L = input_ids.shape
-
-    # result = llama.generate(input_ids, MAX_NEW_TOKENS)
-    # print(result)
-    # print(bpe.decode_token(result[0][0]))
-
-    MAX_NEW_TOKENS = 100
-    for id in llama.generate_old(input_ids, MAX_NEW_TOKENS):
-        L += 1
-        output_id = id[0].tolist()
-        if output_id[-1] in [bpe.specials.end.id, bpe.specials.start.id]:
-            break
-        print(bpe.decode_token(output_id[-1]), end="")
-        sys.stdout.flush()
-
-    elapsed = time.time() - start
-    print(f"\n\nToken count: {L}, elapsed: {elapsed:.2f}s, {round(L / elapsed)} tokens/s")
-
-if __name__ == '__main__':
-    start()
