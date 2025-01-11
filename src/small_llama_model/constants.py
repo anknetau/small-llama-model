@@ -6,6 +6,7 @@ class Constants:
     MODEL_BASE_DIR = dirname(__file__) + "/../../models/"
     BPE_FLCC_CS = MODEL_BASE_DIR + "flcc-cs/flcc.bpe"
     MODEL_FLCC_CS = MODEL_BASE_DIR + "flcc-cs/flcc.model"
+    # https://huggingface.co/tensorblock/llama-39m-GGUF/blob/main/llama-39m-Q8_0.gguf
     MODEL_LLAMA_39 = MODEL_BASE_DIR + "llama-39m-Q8_0.gguf"
 
 
