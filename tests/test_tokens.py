@@ -5,12 +5,14 @@
 import unittest
 from small_llama_model import BPE, Constants
 from small_llama_model.tokens import token_reader_impl
+from small_llama_model.utils.checks import assert_check_bpe
 
 class TestTokens(unittest.TestCase):
     def setUp(self):
         self.bpe = BPE()
         with open(Constants.BPE_FLCC_CS, 'r') as reader:
             self.bpe.read(token_reader_impl.NumericLinesReader(reader))
+        assert_check_bpe(self.bpe)
 
     def test_bpe(self):
         bpe = self.bpe

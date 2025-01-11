@@ -2,6 +2,7 @@
 
 from tokens.tokens import Special, Specials, GToken, GTType, AToken
 from core.model import Model
+from core.constants import Constants
 from utils.common import *
 
 # This file implements the GGML tokeniser within GGUF
@@ -47,4 +48,4 @@ def read(model: Model):
     )
 
     vocab_size = len(tokens)
-    return (gtokens, specials, vocab_size)
+    return (gtokens, specials, vocab_size, Constants.TYPE_BPE_GGML)

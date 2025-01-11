@@ -2,8 +2,9 @@
 
 from tokens.tokens import GToken, Rule, Special, Specials, AToken, GTType
 from utils.common import *
+from core.constants import Constants
 
-def read(reader: TextIOBase) -> tuple[list[AToken], Specials, int]:
+def read(reader: TextIOBase) -> tuple[list[AToken], Specials, int, str]:
     numbers = read_numeric_lines(reader)
     base_count = numbers[0][0]
     rules_count = numbers[0][1]
@@ -16,7 +17,7 @@ def read(reader: TextIOBase) -> tuple[list[AToken], Specials, int]:
     all: list[AToken] = []
     all.extend(bases)
     all.extend(rules)
-    return (all, specials, vocab_size)
+    return (all, specials, vocab_size, Constants.TYPE_BPE_NUMERIC)
 
 def read_numeric_lines(reader: TextIOBase):
     all_numbers: list[list[int]] = []

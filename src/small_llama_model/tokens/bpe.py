@@ -3,9 +3,10 @@
 from utils.common import *
 from tokens.tokens import Rule, Special, Specials, GToken, IdAndString, AToken, GTType
 
+BPEReaderResult: TypeAlias = tuple[list[AToken], Specials, int, str]
 class BPEReader:
     @abstractmethod
-    def read(self) -> tuple[list[AToken], Specials, int]:
+    def read(self) -> BPEReaderResult:
         raise NotImplementedError
 
 @dataclass
@@ -13,17 +14,19 @@ class BPE:
     gtokens: list[GToken] = field(default_factory=list)
     rules: list[Rule] = field(default_factory=list)
     vocab_size: int = 0
+    name: str = ""
 
     def __post_init__(self):
         self._cache: dict[int, AToken] = dict()
 
     def read(self, reader: BPEReader):
-        (input, specials, vocab_size) = reader.read()
+        (input, specials, vocab_size, name) = reader.read()
         self.gtokens = [t for t in input if isinstance(t, GToken)]
         self._process_gtokens()
         self.rules = [t for t in input if isinstance(t, Rule)]
         self.specials = specials
         self.vocab_size = vocab_size
+        self.name = name
         self._fill_index()
         self.table = self._build_simple_table()
 

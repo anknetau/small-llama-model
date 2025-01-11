@@ -227,7 +227,8 @@ class LlamaThirdParty:
         input_ids = np.array([tokens])
         _, l = input_ids.shape
 
-        MAX_NEW_TOKENS = 100
+        # how many tokens to stop at
+        MAX_NEW_TOKENS = 50
         for id in self.generate_old(input_ids, MAX_NEW_TOKENS):
             print(id)
             l += 1
