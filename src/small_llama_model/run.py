@@ -11,38 +11,28 @@ from third.llama3 import LlamaThirdParty
 from utils.prompts import prompt_cs, prompt_text
 
 def start():
-    check_llama()
-    check_flcc()
-    check_llama_third()
+    check(*load_llama())
+    check(*load_flcc())
+    check(*load_llama(), True)
+
 
 # checks
 
-def check_llama_third():
-    model, bpe, prompt = load_llama()
-    llama_third = LlamaThirdParty(model, bpe)
-    tokens = bpe.encode(prompt, model.embedding_length, fill=False, start=True, end=False)
-    llama_third.run_pass(tokens, bpe)
-
-def check_flcc():
-    flcc_model, bpe, prompt = load_flcc()
+def check(model: Model, bpe: BPE, prompt: str, useThirdParty: bool=False):
     print("input:", str.encode(prompt))
-    tokens = bpe.encode(prompt, flcc_model.embedding_length, fill=False, start=True, end=False)
+    tokens = bpe.encode(prompt, model.embedding_length, fill=False, start=True, end=False)
     print("tokens:", tokens)
-    result = flcc_model.run_pass(tokens)
-    print("result:", bpe.decode_token(result))
-
-def check_llama():
-    llama_model, bpe, prompt = load_llama()
-    tokens = bpe.encode(prompt, llama_model.embedding_length, fill=False, start=True, end=False)
-    str2 = bpe.decode(tokens)
-    print("tokens:", tokens, str2.encode())
-    result = llama_model.run_pass(tokens)
-    print("result:", bpe.decode_token(result))
+    if useThirdParty:
+        llama_third = LlamaThirdParty(model, bpe)
+        llama_third.run_pass(tokens, bpe)
+    else:
+        result = model.run_pass(tokens)
+        print("result:", bpe.decode_token(result))
 
 # Loaders
 
 def load_llama():
-    print("Llama")
+    print("* Loaded Llama")
     with open(Constants.MODEL_LLAMA_39, "rb") as reader:
         llama_model = Model.load(reader)
     assert_check_model(llama_model)
@@ -52,7 +42,7 @@ def load_llama():
     return llama_model, bpe, prompt_text()
 
 def load_flcc():
-    print("FLCC")
+    print("* Loaded FLCC")
     with open(Constants.MODEL_FLCC_CS, "rb") as reader:
         flcc_model = Model.load(reader)
     assert_check_model(flcc_model)
@@ -60,7 +50,6 @@ def load_flcc():
     with open(Constants.BPE_FLCC_CS, 'r') as reader:
         bpe.read(token_reader_impl.NumericLinesReader(reader))
     assert_check_bpe(bpe)
-
     return flcc_model, bpe, prompt_cs()
 
 
