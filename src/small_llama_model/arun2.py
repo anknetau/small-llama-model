@@ -1,4 +1,4 @@
-# From https://github.com/tairov/llama2.py
+# Adapted from https://github.com/tairov/llama2.py
 
 # Further changes 2025- Andres Kievsky
 
@@ -467,6 +467,9 @@ def run(args):
 
     runner = Runner.make(Runner.load_llama)
     model = runner.model
+    prompt = runner.prompt
+    print("Prompt", prompt.encode())
+    temperature = 0
 
     # dim, hidden_dim, n_layers, n_heads, n_kv_heads, vocab_size, seq_len = struct.unpack('7i', _config)
     dim = runner.model.embedding_length # runner.model.embedding_length or llama.rope.dimension_count
@@ -478,7 +481,6 @@ def run(args):
     n_kv_heads = model.info["llama.attention.head_count"] # Number of Key-Value Heads, llama.attention.head_count_kv
     vocab_size = runner.bpe.vocab_size # llama.vocab_size: Specifies the size of the vocabulary used in the model
     seq_len = model.info["llama.context_length"] # llama.context_length: The maximum number of tokens the model can process in a single forward pass.
-    print(runner.model.detailed_description())
 
     # Creating a Config object
     config = Config(dim, hidden_dim, n_layers, n_heads, n_kv_heads, vocab_size, seq_len)
